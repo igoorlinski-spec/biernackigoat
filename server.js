@@ -1,0 +1,502 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database setup
+const dbPath = path.join(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Connected to SQLite database.');
+    initializeDatabase();
+  }
+});
+
+function initializeDatabase() {
+  db.serialize(() => {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        nick TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        coins INTEGER DEFAULT 1000,
+        lp INTEGER DEFAULT 0,
+        rank TEXT DEFAULT 'Iron 4',
+        unlocked_characters TEXT DEFAULT 'Zygzak'
+      )
+    `);
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS matches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        player1 TEXT NOT NULL,
+        player2 TEXT NOT NULL,
+        winner TEXT NOT NULL,
+        mode TEXT NOT NULL,
+        score TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  });
+}
+
+// Ranks hierarchy
+const RANKS = [
+  'Iron 4', 'Iron 3', 'Iron 2', 'Iron 1',
+  'Bronze 4', 'Bronze 3', 'Bronze 2', 'Bronze 1',
+  'Silver 4', 'Silver 3', 'Silver 2', 'Silver 1',
+  'Gold 4', 'Gold 3', 'Gold 2', 'Gold 1',
+  'Platinum 4', 'Platinum 3', 'Platinum 2', 'Platinum 1',
+  'Emerald 4', 'Emerald 3', 'Emerald 2', 'Emerald 1',
+  'Diamond 4', 'Diamond 3', 'Diamond 2', 'Diamond 1',
+  'Master', 'Grandmaster', 'Challenger'
+];
+
+function calculateNewRank(currentRank, currentLp, lpChange) {
+  let newLp = currentLp + lpChange;
+  let rankIndex = RANKS.indexOf(currentRank);
+  if (rankIndex === -1) rankIndex = 0;
+
+  // Master, Grandmaster, Challenger logic (simply based on absolute LP thresholds once Master is reached)
+  const isApexTier = (rank) => ['Master', 'Grandmaster', 'Challenger'].includes(rank);
+
+  if (isApexTier(currentRank)) {
+    if (newLp < 0) {
+      // Demote back to Diamond 1
+      return { rank: 'Diamond 1', lp: 75 };
+    }
+    // Progression between Master/GM/Challenger
+    if (newLp >= 1000) {
+      return { rank: 'Challenger', lp: newLp };
+    } else if (newLp >= 500) {
+      return { rank: 'Grandmaster', lp: newLp };
+    } else {
+      return { rank: 'Master', lp: newLp };
+    }
+  }
+
+  // standard divisions (Iron 4 to Diamond 1)
+  if (newLp >= 100) {
+    if (rankIndex < RANKS.indexOf('Diamond 1')) {
+      // Promote
+      rankIndex += 1;
+      newLp = newLp - 100;
+    } else {
+      // Diamond 1 -> Master
+      return { rank: 'Master', lp: newLp - 100 };
+    }
+  } else if (newLp < 0) {
+    if (rankIndex > 0) {
+      // Demote
+      rankIndex -= 1;
+      newLp = 100 + newLp; // e.g. 100 - 15 = 85 LP in lower tier
+    } else {
+      // Iron 4 0 LP floor
+      newLp = 0;
+    }
+  }
+
+  return { rank: RANKS[rankIndex], lp: newLp };
+}
+
+// REST Endpoints
+app.post('/api/register', (req, res) => {
+  const { nick, password } = req.body;
+  if (!nick || !password) {
+    return res.status(400).json({ error: 'Nick and password are required' });
+  }
+
+  db.get('SELECT nick FROM users WHERE nick = ?', [nick], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (row) return res.status(400).json({ error: 'Nick already taken' });
+
+    bcrypt.hash(password, 10, (err, hash) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      db.run(
+        'INSERT INTO users (nick, password) VALUES (?, ?)',
+        [nick, hash],
+        function(err) {
+          if (err) return res.status(500).json({ error: err.message });
+          res.json({ success: true });
+        }
+      );
+    });
+  });
+});
+
+app.post('/api/login', (req, res) => {
+  const { nick, password } = req.body;
+  db.get('SELECT * FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!isMatch) return res.status(400).json({ error: 'Incorrect password' });
+
+      res.json({
+        nick: user.nick,
+        coins: user.coins,
+        lp: user.lp,
+        rank: user.rank,
+        unlocked_characters: user.unlocked_characters.split(',')
+      });
+    });
+  });
+});
+
+app.get('/api/profile/:nick', (req, res) => {
+  const { nick } = req.params;
+  db.get('SELECT nick, coins, lp, rank, unlocked_characters FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'Player not found' });
+
+    db.all(
+      'SELECT * FROM matches WHERE player1 = ? OR player2 = ? ORDER BY timestamp DESC LIMIT 10',
+      [nick, nick],
+      (err, matches) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({
+          nick: user.nick,
+          coins: user.coins,
+          lp: user.lp,
+          rank: user.rank,
+          unlocked_characters: user.unlocked_characters.split(','),
+          history: matches
+        });
+      }
+    );
+  });
+});
+
+app.get('/api/leaderboard', (req, res) => {
+  db.all('SELECT nick, lp, rank, coins FROM users ORDER BY lp DESC, coins DESC LIMIT 20', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/buy', (req, res) => {
+  const { nick, character, cost } = req.body;
+  db.get('SELECT coins, unlocked_characters FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let characters = user.unlocked_characters.split(',');
+    if (characters.includes(character)) {
+      return res.status(400).json({ error: 'Already unlocked' });
+    }
+    if (user.coins < cost) {
+      return res.status(400).json({ error: 'Not enough coins' });
+    }
+
+    characters.push(character);
+    const newCoins = user.coins - cost;
+    const newCharsStr = characters.join(',');
+
+    db.run(
+      'UPDATE users SET coins = ?, unlocked_characters = ? WHERE nick = ?',
+      [newCoins, newCharsStr, nick],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ coins: newCoins, unlocked_characters: characters });
+      }
+    );
+  });
+});
+
+// Real-time Game State
+const queues = {
+  draft: [],
+  ranked: []
+};
+
+const activeGames = {};
+
+io.on('connection', (socket) => {
+  let playerNick = null;
+
+  socket.on('register_connection', (nick) => {
+    playerNick = nick;
+    socket.join(nick); // join personal room for direct notification
+    console.log(`Player ${nick} connected via WebSocket.`);
+  });
+
+  socket.on('join_queue', ({ mode, nick }) => {
+    playerNick = nick;
+    if (!queues[mode].includes(nick)) {
+      queues[mode].push(nick);
+      console.log(`${nick} joined ${mode} queue.`);
+    }
+
+    // Try matchmaking
+    if (queues[mode].length >= 2) {
+      const p1 = queues[mode].shift();
+      const p2 = queues[mode].shift();
+
+      const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const game = {
+        id: gameId,
+        mode,
+        player1: p1,
+        player2: p2,
+        scores: { [p1]: 0, [p2]: 0 },
+        round: 1,
+        targetTime: 0,
+        roundInputs: {},
+        skillsUsed: { [p1]: false, [p2]: false },
+        activeEffects: { [p1]: {}, [p2]: {} }
+      };
+
+      activeGames[gameId] = game;
+
+      // Join game rooms
+      io.to(p1).emit('match_found', { gameId, opponent: p2, mode, role: 'player1' });
+      io.to(p2).emit('match_found', { gameId, opponent: p1, mode, role: 'player2' });
+
+      startNewRound(gameId);
+    }
+  });
+
+  socket.on('leave_queue', ({ mode, nick }) => {
+    queues[mode] = queues[mode].filter(n => n !== nick);
+    console.log(`${nick} left ${mode} queue.`);
+  });
+
+  // Gameplay
+  socket.on('submit_time', ({ gameId, nick, timeDiff }) => {
+    const game = activeGames[gameId];
+    if (!game) return;
+
+    game.roundInputs[nick] = timeDiff;
+
+    // Check if both submitted
+    if (Object.keys(game.roundInputs).length === 2) {
+      evaluateRound(gameId);
+    }
+  });
+
+  // Use Skill
+  socket.on('use_skill', ({ gameId, nick, skill }) => {
+    const game = activeGames[gameId];
+    if (!game) return;
+
+    if (game.skillsUsed[nick]) return; // limit exactly 1 per match
+    game.skillsUsed[nick] = true;
+
+    const opponent = game.player1 === nick ? game.player2 : game.player1;
+
+    if (skill === 'Zygzak') {
+      // Opponent screen shakes/turns red
+      io.to(opponent).emit('skill_triggered', { type: 'shake' });
+    } else if (skill === 'Dushane') {
+      // Subtracts 0.15s from own diff (applied during evaluation)
+      game.activeEffects[nick].dushane = true;
+      io.to(nick).emit('skill_triggered', { type: 'dushane_self' });
+      io.to(opponent).emit('skill_triggered', { type: 'dushane_opp' });
+    } else if (skill === 'Tony Soprano') {
+      // Adds 1.00s to opponent, hides target
+      game.activeEffects[opponent].tony = true;
+      io.to(opponent).emit('skill_triggered', { type: 'tony_opp' });
+      io.to(nick).emit('skill_triggered', { type: 'tony_self' });
+    } else if (skill === 'WhiteToes') {
+      // Opponent time ticks 2x faster
+      game.activeEffects[opponent].speedup = true;
+      io.to(opponent).emit('skill_triggered', { type: 'speedup' });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    if (playerNick) {
+      queues.draft = queues.draft.filter(n => n !== playerNick);
+      queues.ranked = queues.ranked.filter(n => n !== playerNick);
+
+      // Handle disconnect inside active games
+      for (const gameId in activeGames) {
+        const game = activeGames[gameId];
+        if (game.player1 === playerNick || game.player2 === playerNick) {
+          const opponent = game.player1 === playerNick ? game.player2 : game.player1;
+          io.to(opponent).emit('opponent_disconnected');
+          finishGame(gameId, opponent, true);
+        }
+      }
+    }
+  });
+});
+
+function startNewRound(gameId) {
+  const game = activeGames[gameId];
+  if (!game) return;
+
+  // Random target time between 0.01 and 10.00 seconds
+  game.targetTime = parseFloat((Math.random() * 9.99 + 0.01).toFixed(2));
+  game.roundInputs = {};
+
+  // Reset round-specific effects
+  game.activeEffects[game.player1] = {};
+  game.activeEffects[game.player2] = {};
+
+  io.to(game.player1).emit('new_round', {
+    round: game.round,
+    targetTime: game.targetTime,
+    scores: game.scores
+  });
+  io.to(game.player2).emit('new_round', {
+    round: game.round,
+    targetTime: game.targetTime,
+    scores: game.scores
+  });
+}
+
+function evaluateRound(gameId) {
+  const game = activeGames[gameId];
+  if (!game) return;
+
+  const p1 = game.player1;
+  const p2 = game.player2;
+
+  let diff1 = game.roundInputs[p1];
+  let diff2 = game.roundInputs[p2];
+
+  // Apply skill modifiers
+  if (game.activeEffects[p1].dushane) {
+    diff1 = Math.max(0, diff1 - 0.15);
+  }
+  if (game.activeEffects[p2].dushane) {
+    diff2 = Math.max(0, diff2 - 0.15);
+  }
+  if (game.activeEffects[p1].tony) {
+    diff1 += 1.00;
+  }
+  if (game.activeEffects[p2].tony) {
+    diff2 += 1.00;
+  }
+
+  // Closer to target wins (i.e. smaller diff)
+  let roundWinner = null;
+  if (diff1 === diff2) {
+    roundWinner = 'draw';
+  } else if (diff1 < diff2) {
+    roundWinner = p1;
+    game.scores[p1]++;
+  } else {
+    roundWinner = p2;
+    game.scores[p2]++;
+  }
+
+  io.to(p1).emit('round_result', {
+    winner: roundWinner,
+    scores: game.scores,
+    yourDiff: diff1,
+    oppDiff: diff2,
+    target: game.targetTime
+  });
+  io.to(p2).emit('round_result', {
+    winner: roundWinner,
+    scores: game.scores,
+    yourDiff: diff2,
+    oppDiff: diff1,
+    target: game.targetTime
+  });
+
+  // Check game over
+  const pointsToWin = game.mode === 'ranked' ? 3 : 5;
+  if (game.scores[p1] >= pointsToWin) {
+    finishGame(gameId, p1);
+  } else if (game.scores[p2] >= pointsToWin) {
+    finishGame(gameId, p2);
+  } else {
+    game.round++;
+    setTimeout(() => {
+      startNewRound(gameId);
+    }, 4000); // 4-second delay between rounds
+  }
+}
+
+function finishGame(gameId, winnerNick, isDisconnect = false) {
+  const game = activeGames[gameId];
+  if (!game) return;
+
+  const loserNick = game.player1 === winnerNick ? game.player2 : game.player1;
+  const scoreStr = `${game.scores[game.player1]}-${game.scores[game.player2]}`;
+
+  // Save to match history
+  db.run(
+    'INSERT INTO matches (player1, player2, winner, mode, score) VALUES (?, ?, ?, ?, ?)',
+    [game.player1, game.player2, winnerNick, game.mode, scoreStr]
+  );
+
+  // Update stats
+  if (game.mode === 'draft') {
+    // Draft rewards: 50 coins per point won. Winner gets +250 coins bonus.
+    const rewardW = game.scores[winnerNick] * 50 + 250;
+    const rewardL = game.scores[loserNick] * 50;
+
+    db.serialize(() => {
+      db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick]);
+      db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick]);
+    });
+
+    io.to(winnerNick).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
+    io.to(loserNick).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
+  } else if (game.mode === 'ranked') {
+    // Ranked rewards/penalties: Wins +20 to +30 LP. Losses -15 to -20 LP.
+    const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
+    const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
+
+    db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
+      if (winUser) {
+        const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
+        db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick]);
+        io.to(winnerNick).emit('game_over', {
+          winner: winnerNick,
+          lpChange: lpGain,
+          newRank: nextW.rank,
+          newLp: nextW.lp,
+          prevRank: winUser.rank,
+          prevLp: winUser.lp
+        });
+      }
+    });
+
+    db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
+      if (loseUser) {
+        const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
+        db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick]);
+        io.to(loserNick).emit('game_over', {
+          winner: winnerNick,
+          lpChange: lpLoss,
+          newRank: nextL.rank,
+          newLp: nextL.lp,
+          prevRank: loseUser.rank,
+          prevLp: loseUser.lp
+        });
+      }
+    });
+  }
+
+  delete activeGames[gameId];
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});

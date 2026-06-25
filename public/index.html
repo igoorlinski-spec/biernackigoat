@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>League of Legends - Hextech Time Challenge</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --bg-dark: #010a13;
+      --bg-card: rgba(1, 10, 19, 0.85);
+      --gold-primary: #c8aa6e;
+      --gold-dark: #785a28;
+      --cyan-primary: #0ac8b9;
+      --cyan-dark: #005a82;
+      --text-main: #f0e6d2;
+      --text-muted: #a09c90;
+      --red-primary: #ff4655;
+      --hex-border: 1px solid rgba(200, 170, 110, 0.35);
+      --font-title: 'Marcellus', serif;
+      --font-body: 'Montserrat', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at center, #001e28 0%, #010a13 100%);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--gold-dark);
+      border-radius: 3px;
+    }
+
+    /* Screen Shake & Red flash effect for Zygzak skill */
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-10px, 0); }
+      20%, 40%, 60%, 80% { transform: translate(10px, 0); }
+    }
+
+    .shake-effect {
+      animation: shake 0.6s ease-in-out infinite;
+      box-shadow: inset 0 0 100px var(--red-primary) !important;
+    }
+
+    /* Speedup overlay indicator */
+    .speedup-active {
+      box-shadow: inset 0 0 50px rgba(10, 200, 185, 0.5) !important;
+    }
+
+    /* Top Nav */
+    header {
+      background: rgba(1, 10, 19, 0.95);
+      border-bottom: 2px solid var(--gold-primary);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-container i {
+      color: var(--gold-primary);
+      font-size: 2rem;
+      text-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    .logo-container h1 {
+      font-family: var(--font-title);
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(to right, #ffffff, var(--gold-primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 20px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 5px 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .tab-btn::after {
+      content: '';
+      position: absolute;
+      bottom: -17px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--gold-primary);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    .tab-btn:hover, .tab-btn.active {
+      color: var(--gold-primary);
+    }
+
+    .tab-btn.active::after {
+      transform: scaleX(1);
+    }
+
+    .user-panel {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stat-badge {
+      background: rgba(200, 170, 110, 0.1);
+      border: 1px solid var(--gold-dark);
+      padding: 6px 15px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .stat-badge.coins i {
+      color: #ffd700;
+    }
+
+    .stat-badge.lp i {
+      color: var(--cyan-primary);
+    }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--red-primary);
+      color: var(--red-primary);
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background: var(--red-primary);
+      color: white;
+    }
+
+    /* Auth Screens */
+    .auth-container {
+      max-width: 450px;
+      margin: 80px auto;
+      padding: 40px;
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+      position: relative;
+    }
+
+    .auth-container::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px; right: -1px; bottom: -1px;
+      border-radius: 8px;
+      border: 1px solid var(--gold-primary);
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .auth-container h2 {
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+      color: var(--gold-primary);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .form-group input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--gold-dark);
+      padding: 12px;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 5px rgba(200, 170, 110, 0.4);
+    }
+
+    .auth-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--gold-dark), var(--gold-primary));
+      border: none;
+      color: #010a13;
+      font-family: var(--font-title);
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 1.1rem;
+      padding: 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 1px;
+    }
+
+    .auth-btn:hover {
+      filter: brightness(1.2);
+      box-shadow: 0 0 15px var(--gold-primary);
+    }
+
+    .auth-switch {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .auth-switch span {
+      color: var(--gold-primary);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Views */
+    main {
+      flex: 1;
+      padding: 40px 20px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Lobby View */
+    .lobby-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .lobby-header h2 {
+      font-family: var(--font-title);
+      font-size: 2.5rem;
+      color: var(--gold-primary);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+    }
+
+    .lobby-header p {
+      color: var(--text-muted);
+      margin-top: 10px;
+    }
+
+    .modes-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .mode-card {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 40px 30px;
+      text-align: center;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mode-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 4px;
+    }
+
+    .mode-card.draft::before {
+      background: var(--cyan-primary);
+    }
+
+    .mode-card.ranked::before {
+      background: var(--gold-primary);
+    }
+
+    .mode-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border-color: var(--gold-primary);
+    }
+
+    .mode-card i {
+      font-size: 3.5rem;
+      margin-bottom: 20px;
+    }
+
+    .mode-card.draft i {
+      color: var(--cyan-primary);
+      text-shadow: 0 0 15px var(--cyan-primary);
+    }
+
+    .mode-card.ranked i {
+      color: var(--gold-primary);
+      text-shadow: 0 0 15px var(--gold-primary);
+    }
+
+    .mode-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.8rem;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .mode-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      font-size: 1.1rem;
+      padding: 12px 30px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+      letter-spacing: 1px;
+      align-self: center;
+    }
+
+    .mode-btn:hover {
+      background: var(--gold-primary);
+      color: #010a13;
+      box-shadow: 0 0 15px var(--gold-primary);
+    }
+
+    /* Queue Overlay */
+    .queue-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(1, 10, 19, 0.95);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .queue-box {
+      text-align: center;
+    }
+
+    .spinner {
+      width: 80px;
+      height: 80px;
+      border: 4px solid rgba(200, 170, 110, 0.2);
+      border-top: 4px solid var(--gold-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 30px auto;
+      box-shadow: 0 0 15px rgba(200, 170, 110, 0.4);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .queue-box h3 {
+      font-family: var(--font-title);
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: var(--gold-primary);
+      margin-bottom: 10px;
+    }
+
+    .queue-timer {
+      font-size: 1.5rem;
+      color: var(--text-main);
+      margin-bottom: 30px;
+    }
+
+    .cancel-queue-btn {
+      background: transparent;
+      border: 1px solid var(--red-primary);
+      color: var(--red-primary);
+      padding: 10px 25px;
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .cancel-queue-btn:hover {
+      background: var(--red-primary);
+      color: white;
+      box-shadow: 0 0 15px var(--red-primary);
+    }
+
+    /* Game View */
+    .game-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .player-column {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      position: relative;
+    }
+
+    .player-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 2px solid var(--gold-primary);
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 3rem;
+      color: var(--gold-primary);
+      margin-bottom: 15px;
+    }
+
+    .player-name {
+      font-family: var(--font-title);
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+    }
+
+    .player-champion {
+      font-size: 0.9rem;
+      color: var(--cyan-primary);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .player-score {
+      font-size: 3.5rem;
+      font-family: var(--font-title);
+      color: var(--gold-primary);
+      text-shadow: 0 0 10px rgba(200, 170, 110, 0.5);
+    }
+
+    .arena {
+      background: rgba(0,0,0,0.6);
+      border: 2px solid var(--gold-primary);
+      border-radius: 8px;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 500px;
+      position: relative;
+      box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
+    }
+
+    .arena-header {
+      text-align: center;
+    }
+
+    .round-indicator {
+      font-family: var(--font-title);
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      color: var(--gold-primary);
+      text-transform: uppercase;
+    }
+
+    .target-time-box {
+      margin-top: 15px;
+      background: rgba(200, 170, 110, 0.1);
+      border: 1px dashed var(--gold-primary);
+      padding: 15px 30px;
+      border-radius: 4px;
+    }
+
+    .target-label {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .target-val {
+      font-size: 2.5rem;
+      font-family: var(--font-title);
+      font-weight: bold;
+      color: var(--text-main);
+      text-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    .stopwatch-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stopwatch-btn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #102a3a 0%, #001520 100%);
+      border: 4px solid var(--gold-primary);
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--gold-primary);
+      font-size: 2.5rem;
+      box-shadow: 0 0 20px rgba(200, 170, 110, 0.3), inset 0 0 20px rgba(0,0,0,0.8);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .stopwatch-btn:hover {
+      transform: scale(1.05);
+      border-color: var(--cyan-primary);
+      color: var(--cyan-primary);
+      box-shadow: 0 0 30px rgba(10, 200, 185, 0.4);
+    }
+
+    .stopwatch-btn:active {
+      transform: scale(0.95);
+    }
+
+    .stopwatch-btn.running {
+      border-color: var(--cyan-primary);
+      color: var(--cyan-primary);
+      box-shadow: 0 0 40px var(--cyan-primary);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .stopwatch-status {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      height: 20px;
+    }
+
+    .arena-footer {
+      text-align: center;
+      width: 100%;
+    }
+
+    .skill-hud {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 15px;
+    }
+
+    .hud-skill-btn {
+      background: var(--bg-dark);
+      border: 2px solid var(--gold-dark);
+      color: var(--gold-primary);
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.3s;
+    }
+
+    .hud-skill-btn:hover:not(.disabled) {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    .hud-skill-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: #333;
+    }
+
+    .hud-skill-btn i {
+      font-size: 1.2rem;
+    }
+
+    .hud-skill-btn .key-bind {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 0.65rem;
+      background: var(--gold-primary);
+      color: black;
+      font-weight: bold;
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    .hud-skill-btn .tooltip {
+      position: absolute;
+      bottom: 75px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-dark);
+      border: 1px solid var(--gold-primary);
+      padding: 10px;
+      border-radius: 4px;
+      width: 200px;
+      font-size: 0.75rem;
+      color: var(--text-main);
+      display: none;
+      z-index: 10;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+    }
+
+    .hud-skill-btn:hover .tooltip {
+      display: block;
+    }
+
+    /* Result Modal / Overlay */
+    .round-result-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(1, 10, 19, 0.95);
+      z-index: 20;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      border-radius: 6px;
+    }
+
+    .result-title {
+      font-family: var(--font-title);
+      font-size: 2.2rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    .result-title.victory {
+      color: var(--cyan-primary);
+      text-shadow: 0 0 15px var(--cyan-primary);
+    }
+
+    .result-title.defeat {
+      color: var(--red-primary);
+      text-shadow: 0 0 15px var(--red-primary);
+    }
+
+    .result-title.draw {
+      color: var(--text-muted);
+    }
+
+    .result-stats-box {
+      background: rgba(200, 170, 110, 0.05);
+      border: var(--hex-border);
+      padding: 20px;
+      border-radius: 4px;
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 30px;
+    }
+
+    .result-stat-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    .result-stat-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-weight: bold;
+    }
+
+    /* Shop View */
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 25px;
+    }
+
+    .shop-card {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 25px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .shop-card:hover {
+      border-color: var(--gold-primary);
+      transform: translateY(-3px);
+    }
+
+    .shop-card-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 2px solid var(--gold-primary);
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2.2rem;
+      color: var(--gold-primary);
+      margin: 0 auto 15px auto;
+    }
+
+    .shop-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .shop-card .champ-price {
+      color: #ffd700;
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .shop-card .champ-skill-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+      min-height: 45px;
+    }
+
+    .buy-btn {
+      background: transparent;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      padding: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .buy-btn:hover:not(.unlocked):not(.disabled) {
+      background: var(--gold-primary);
+      color: #010a13;
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+
+    .buy-btn.unlocked {
+      border-color: var(--cyan-primary);
+      color: var(--cyan-primary);
+      cursor: default;
+    }
+
+    .buy-btn.active-champ {
+      background: var(--cyan-primary);
+      border-color: var(--cyan-primary);
+      color: #010a13;
+      font-weight: bold;
+      cursor: default;
+    }
+
+    .buy-btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      border-color: #333;
+      color: #777;
+    }
+
+    /* Profile View */
+    .profile-layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 30px;
+    }
+
+    .profile-card {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .profile-avatar-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid var(--gold-primary);
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 4rem;
+      color: var(--gold-primary);
+      margin: 0 auto 20px auto;
+      box-shadow: 0 0 20px rgba(200, 170, 110, 0.3);
+    }
+
+    .profile-nick {
+      font-family: var(--font-title);
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+    }
+
+    .profile-rank {
+      font-family: var(--font-title);
+      color: var(--gold-primary);
+      font-size: 1.3rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+
+    .profile-lp {
+      color: var(--cyan-primary);
+      font-weight: bold;
+      margin-bottom: 25px;
+    }
+
+    .profile-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      border-top: 1px solid rgba(200, 170, 110, 0.2);
+      padding-top: 20px;
+    }
+
+    .profile-stat-box {
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 4px;
+    }
+
+    .profile-stat-num {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--text-main);
+    }
+
+    .profile-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    .history-card {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 30px;
+    }
+
+    .history-card h3 {
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      font-size: 1.4rem;
+      color: var(--gold-primary);
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(200, 170, 110, 0.2);
+      padding-bottom: 10px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-item {
+      background: rgba(0,0,0,0.4);
+      border-left: 4px solid var(--text-muted);
+      border-radius: 0 4px 4px 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-item.win {
+      border-left-color: var(--cyan-primary);
+      background: rgba(10, 200, 185, 0.05);
+    }
+
+    .history-item.loss {
+      border-left-color: var(--red-primary);
+      background: rgba(255, 70, 85, 0.05);
+    }
+
+    .history-item-left {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .history-opp {
+      font-weight: bold;
+      font-size: 0.95rem;
+    }
+
+    .history-mode {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .history-score {
+      font-family: var(--font-title);
+      font-size: 1.2rem;
+      color: var(--gold-primary);
+    }
+
+    /* Leaderboard View */
+    .leaderboard-card {
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .leaderboard-card h3 {
+      font-family: var(--font-title);
+      font-size: 1.8rem;
+      color: var(--gold-primary);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .leaderboard-table th, .leaderboard-table td {
+      padding: 14px;
+      text-align: left;
+    }
+
+    .leaderboard-table th {
+      border-bottom: 2px solid var(--gold-dark);
+      font-family: var(--font-title);
+      color: var(--gold-primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-size: 0.9rem;
+    }
+
+    .leaderboard-table tr {
+      border-bottom: 1px solid rgba(200, 170, 110, 0.1);
+      transition: background 0.3s;
+    }
+
+    .leaderboard-table tr:hover {
+      background: rgba(200, 170, 110, 0.03);
+    }
+
+    .leaderboard-table td.rank-cell {
+      font-weight: bold;
+      color: var(--gold-primary);
+    }
+
+    .leaderboard-table td.lp-cell {
+      color: var(--cyan-primary);
+      font-weight: bold;
+    }
+
+    /* Rank Promotion/Demotion Animation Modal */
+    .rank-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .rank-modal-box {
+      background: var(--bg-card);
+      border: 2px solid var(--gold-primary);
+      border-radius: 8px;
+      padding: 40px 60px;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(200, 170, 110, 0.4);
+      max-width: 500px;
+      width: 90%;
+      animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes scaleUp {
+      from { transform: scale(0.7); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .rank-modal-title {
+      font-family: var(--font-title);
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    .rank-modal-title.promo {
+      color: var(--cyan-primary);
+      text-shadow: 0 0 15px var(--cyan-primary);
+    }
+
+    .rank-modal-title.demo {
+      color: var(--red-primary);
+      text-shadow: 0 0 15px var(--red-primary);
+    }
+
+    .rank-comparison {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin: 30px 0;
+    }
+
+    .rank-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rank-display-icon {
+      font-size: 3rem;
+      color: var(--gold-primary);
+    }
+
+    .rank-display-name {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+    }
+
+    .rank-arrow {
+      font-size: 2rem;
+      color: var(--text-muted);
+    }
+
+    .close-modal-btn {
+      background: transparent;
+      border: 1px solid var(--gold-primary);
+      color: var(--gold-primary);
+      padding: 10px 25px;
+      font-family: var(--font-title);
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .close-modal-btn:hover {
+      background: var(--gold-primary);
+      color: #010a13;
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg-card);
+      border: var(--hex-border);
+      border-left: 4px solid var(--cyan-primary);
+      padding: 15px 25px;
+      border-radius: 4px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      z-index: 3000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation (Loaded when authorized) -->
+  <header id="main-header" style="display: none;">
+    <div class="logo-container">
+      <i class="fa-solid fa-hourglass-half"></i>
+      <h1>Hextech Chrono</h1>
+    </div>
+    <nav class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('lobby')">Lobby</button>
+      <button class="tab-btn" onclick="switchTab('shop')">Sklep</button>
+      <button class="tab-btn" onclick="switchTab('profile')">Profil</button>
+      <button class="tab-btn" onclick="switchTab('leaderboard')">Ranking</button>
+    </nav>
+    <div class="user-panel">
+      <span id="player-tag" style="font-weight: bold; color: var(--gold-primary);"></span>
+      <div class="stat-badge coins">
+        <i class="fa-solid fa-coins"></i>
+        <span id="user-coins">0</span>
+      </div>
+      <div class="stat-badge lp">
+        <i class="fa-solid fa-trophy"></i>
+        <span id="user-rank-info">Iron 4 (0 LP)</span>
+      </div>
+      <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Auth View -->
+    <div id="auth-view" class="auth-container">
+      <h2 id="auth-title">Logowanie</h2>
+      <form id="auth-form" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label for="auth-nick">Nick</label>
+          <input type="text" id="auth-nick" required placeholder="Wpisz swój nick">
+        </div>
+        <div class="form-group">
+          <label for="auth-password">Hasło</label>
+          <input type="password" id="auth-password" required placeholder="Wpisz hasło">
+        </div>
+        <button type="submit" id="auth-submit-btn" class="auth-btn">Zaloguj się</button>
+      </form>
+      <div class="auth-switch">
+        <p id="auth-switch-text">Nie masz konta? <span onclick="toggleAuthMode()">Zarejestruj się</span></p>
+      </div>
+    </div>
+
+    <!-- Lobby View -->
+    <div id="lobby-view" class="view">
+      <div class="lobby-header">
+        <h2>Wybierz tryb gry</h2>
+        <p>Precyzyjna rozgrywka w ciemno. Stoper jest niewidoczny. Wciśnij spację, aby uruchomić i zatrzymać.</p>
+      </div>
+      <div class="modes-container">
+        <!-- Draft Mode -->
+        <div class="mode-card draft">
+          <div>
+            <i class="fa-solid fa-gamepad"></i>
+            <h3>Tryb Draft</h3>
+            <p>Gra towarzyska do 5 punktów. Otrzymujesz 50 monet za każdy punkt zdobyty w rundzie, a zwycięzca zgarnia dodatkowo +250 monet bonusu.</p>
+          </div>
+          <button class="mode-btn" onclick="joinQueue('draft')">Graj Draft</button>
+        </div>
+        <!-- Ranked Mode -->
+        <div class="mode-card ranked">
+          <div>
+            <i class="fa-solid fa-trophy"></i>
+            <h3>Tryb Ranked</h3>
+            <p>Poważna rywalizacja 1v1 do 3 punktów. Zwycięstwo daje punkty LP, przegrana je zabiera. Wspinaj się po drabinie rang od Iron do Challenger!</p>
+          </div>
+          <button class="mode-btn" onclick="joinQueue('ranked')">Graj Ranked</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game View -->
+    <div id="game-view" class="view">
+      <div class="game-grid">
+        <!-- Own Stats -->
+        <div class="player-column">
+          <div>
+            <div class="player-avatar">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="player-name" id="p1-name">Ty</div>
+            <div class="player-champion" id="p1-champ">Postać: Zygzak</div>
+          </div>
+          <div class="player-score" id="p1-score">0</div>
+        </div>
+
+        <!-- Arena -->
+        <div class="arena" id="game-arena">
+          <!-- Round results overlay -->
+          <div class="round-result-overlay" id="round-result-screen">
+            <h3 class="result-title" id="round-result-title">ZWYCIĘSTWO!</h3>
+            <div class="result-stats-box">
+              <div class="result-stat-row">
+                <span class="stat-label">Cel czasowy:</span>
+                <span class="stat-val" id="res-target">5.00s</span>
+              </div>
+              <div class="result-stat-row">
+                <span class="stat-label">Twój czas (różnica):</span>
+                <span class="stat-val" id="res-your-diff">+0.05s</span>
+              </div>
+              <div class="result-stat-row">
+                <span class="stat-label">Czas rywala (różnica):</span>
+                <span class="stat-val" id="res-opp-diff">+0.20s</span>
+              </div>
+            </div>
+            <div class="target-label">Następna runda rozpocznie się za chwilę...</div>
+          </div>
+
+          <div class="arena-header">
+            <div class="round-indicator" id="round-num">Runda 1</div>
+            <div class="target-time-box" id="target-time-wrapper">
+              <div class="target-label">Cel czasowy stoperu:</div>
+              <div class="target-val" id="target-time-display">?.??s</div>
+            </div>
+          </div>
+
+          <div class="stopwatch-container">
+            <button class="stopwatch-btn" id="chrono-btn" onclick="triggerStopwatch()">
+              <i class="fa-solid fa-stopwatch"></i>
+            </button>
+            <div class="stopwatch-status" id="chrono-status">Kliknij lub naciśnij SPACJĘ aby uruchomić</div>
+          </div>
+
+          <div class="arena-footer">
+            <div class="target-label">Użyj umiejętności (Klawisz M lub kliknij):</div>
+            <div class="skill-hud" id="skill-hud-list">
+              <!-- Dynamically populated skills -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Opponent Stats -->
+        <div class="player-column">
+          <div>
+            <div class="player-avatar">
+              <i class="fa-solid fa-skull"></i>
+            </div>
+            <div class="player-name" id="p2-name">Przeciwnik</div>
+            <div class="player-champion" id="p2-champ">Postać: Zygzak</div>
+          </div>
+          <div class="player-score" id="p2-score">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shop View -->
+    <div id="shop-view" class="view">
+      <div class="lobby-header">
+        <h2>Sklep bohaterów</h2>
+        <p>Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!</p>
+      </div>
+      <div class="shop-grid" id="shop-items-container">
+        <!-- Dynamically generated shop cards -->
+      </div>
+    </div>
+
+    <!-- Profile View -->
+    <div id="profile-view" class="view">
+      <div class="profile-layout">
+        <!-- Profile Card -->
+        <div class="profile-card">
+          <div class="profile-avatar-large">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <h2 class="profile-nick" id="prof-nick">Gracz</h2>
+          <div class="profile-rank" id="prof-rank">Iron 4</div>
+          <div class="profile-lp" id="prof-lp">0 LP</div>
+          
+          <div class="profile-stats-grid">
+            <div class="profile-stat-box">
+              <div class="profile-stat-num" id="prof-coins">0</div>
+              <div class="profile-stat-label">Monety</div>
+            </div>
+            <div class="profile-stat-box">
+              <div class="profile-stat-num" id="prof-games">0</div>
+              <div class="profile-stat-label">Rozegrane</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match History -->
+        <div class="history-card">
+          <h3>Historia meczów</h3>
+          <div class="history-list" id="prof-history-list">
+            <!-- Dynamically populated match history -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div id="leaderboard-view" class="view">
+      <div class="leaderboard-card">
+        <h3>Tabela rankingowa</h3>
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Miejsce</th>
+              <th>Gracz</th>
+              <th>Ranga</th>
+              <th>Punkty LP</th>
+              <th>Monety</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <!-- Dynamically generated leaderboard rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Queue Screen Modal -->
+  <div id="queue-screen" class="queue-overlay">
+    <div class="queue-box">
+      <div class="spinner"></div>
+      <h3 id="queue-title-text">Poszukiwanie przeciwnika...</h3>
+      <div class="queue-timer" id="queue-clock">00:00</div>
+      <button class="cancel-queue-btn" onclick="cancelQueue()">Anuluj wyszukiwanie</button>
+    </div>
+  </div>
+
+  <!-- Rank Animation Modal -->
+  <div id="rank-animation-modal" class="rank-modal">
+    <div class="rank-modal-box">
+      <h3 class="rank-modal-title" id="rank-anim-title">Awans!</h3>
+      <div class="rank-comparison">
+        <div class="rank-display">
+          <div class="rank-display-icon"><i class="fa-solid fa-award"></i></div>
+          <div class="rank-display-name" id="rank-anim-prev">Iron 4</div>
+        </div>
+        <div class="rank-arrow">
+          <i class="fa-solid fa-angles-right"></i>
+        </div>
+        <div class="rank-display">
+          <div class="rank-display-icon" style="color: var(--cyan-primary); text-shadow: 0 0 10px var(--cyan-primary);"><i class="fa-solid fa-crown"></i></div>
+          <div class="rank-display-name" id="rank-anim-new" style="color: var(--cyan-primary);">Iron 3</div>
+        </div>
+      </div>
+      <div id="rank-anim-lp-detail" style="margin-bottom: 25px; color: var(--text-muted);"></div>
+      <button class="close-modal-btn" onclick="closeRankModal()">Potwierdź</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="system-toast">Powiadomienie</div>
+
+  <script>
+    // State management
+    let socket = null;
+    let currentUser = null;
+    let isRegisterMode = false;
+    let activeTab = 'lobby';
+    let queueMode = null;
+    let queueInterval = null;
+    let queueSeconds = 0;
+
+    // Game variables
+    let currentGameId = null;
+    let currentRole = null;
+    let targetTime = 0;
+    let currentOpponent = null;
+    
+    // Client-side stopwatch values
+    let stopwatchRunning = false;
+    let startTime = 0;
+    let elapsed = 0;
+    let skillUsedInMatch = false;
+    let speedupMultiplier = 1.0;
+
+    // Available Champions data
+    const champions = [
+      { name: 'Zygzak', cost: 0, icon: 'fa-wind', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
+      { name: 'Dushane', cost: 2500, icon: 'fa-bolt', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
+      { name: 'Tony Soprano', cost: 4000, icon: 'fa-user-tie', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
+      { name: 'WhiteToes', cost: 5000, icon: 'fa-bug', desc: 'Infekuje rywala wirusem. Czas na jego stoperze leci 2x szybciej w tym rundzie!' }
+    ];
+
+    // Check existing auth in localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('hextech_user');
+      if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        authorizeUser(currentUser);
+      }
+      renderShop();
+    });
+
+    // Handle Auth toggle (Login vs Register)
+    function toggleAuthMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById('auth-title').innerText = isRegisterMode ? 'Rejestracja' : 'Logowanie';
+      document.getElementById('auth-submit-btn').innerText = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+      document.getElementById('auth-switch-text').innerHTML = isRegisterMode ? 
+        'Masz już konto? <span onclick="toggleAuthMode()">Zaloguj się</span>' : 
+        'Nie masz konta? <span onclick="toggleAuthMode()">Zarejestruj się</span>';
+    }
+
+    async function handleAuth(event) {
+      event.preventDefault();
+      const nick = document.getElementById('auth-nick').value.trim();
+      const password = document.getElementById('auth-password').value;
+
+      const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick, password })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          if (isRegisterMode) {
+            showToast('Konto zarejestrowane! Zaloguj się.');
+            toggleAuthMode();
+          } else {
+            currentUser = data;
+            localStorage.setItem('hextech_user', JSON.stringify(data));
+            authorizeUser(data);
+          }
+        } else {
+          showToast(data.error || 'Wystąpił błąd');
+        }
+      } catch (err) {
+        showToast('Błąd połączenia z serwerem');
+      }
+    }
+
+    function authorizeUser(userData) {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('main-header').style.display = 'flex';
+      
+      // Select current active champion if none set
+      if (!currentUser.activeChampion) {
+        currentUser.activeChampion = 'Zygzak';
+      }
+
+      updateUserUIElements();
+      
+      // Connect sockets
+      connectSocket();
+
+      switchTab('lobby');
+    }
+
+    function updateUserUIElements() {
+      document.getElementById('player-tag').innerText = currentUser.nick;
+      document.getElementById('user-coins').innerText = currentUser.coins;
+      document.getElementById('user-rank-info').innerText = `${currentUser.rank} (${currentUser.lp} LP)`;
+    }
+
+    function connectSocket() {
+      socket = io();
+      socket.emit('register_connection', currentUser.nick);
+
+      socket.on('match_found', ({ gameId, opponent, mode, role }) => {
+        currentGameId = gameId;
+        currentRole = role;
+        currentOpponent = opponent;
+        skillUsedInMatch = false;
+
+        document.getElementById('queue-screen').style.display = 'none';
+        clearInterval(queueInterval);
+
+        // Switch to Game View
+        switchView('game-view');
+
+        // Setup board names
+        document.getElementById('p1-name').innerText = currentUser.nick + ' (Ty)';
+        document.getElementById('p1-champ').innerText = `Postać: ${currentUser.activeChampion}`;
+        document.getElementById('p2-name').innerText = opponent;
+        
+        // Setup initial scores
+        document.getElementById('p1-score').innerText = '0';
+        document.getElementById('p2-score').innerText = '0';
+
+        renderSkillHUD();
+      });
+
+      socket.on('new_round', ({ round, targetTime: target, scores }) => {
+        targetTime = target;
+        elapsed = 0;
+        speedupMultiplier = 1.0;
+        document.getElementById('round-result-screen').style.display = 'none';
+        document.getElementById('round-num').innerText = `Runda ${round}`;
+        
+        // Reset effects & colors
+        const arena = document.getElementById('game-arena');
+        arena.classList.remove('shake-effect', 'speedup-active');
+        document.getElementById('target-time-wrapper').style.display = 'block';
+
+        // Tony Soprano hides target
+        document.getElementById('target-time-display').innerText = `${targetTime.toFixed(2)}s`;
+        
+        // Reset stopwatch state
+        stopwatchRunning = false;
+        document.getElementById('chrono-btn').className = 'stopwatch-btn';
+        document.getElementById('chrono-status').innerText = 'Naciśnij SPACJĘ lub kliknij, aby wystartować';
+
+        // Update real scores
+        document.getElementById('p1-score').innerText = scores[currentUser.nick];
+        document.getElementById('p2-score').innerText = scores[currentOpponent];
+      });
+
+      socket.on('skill_triggered', ({ type }) => {
+        const arena = document.getElementById('game-arena');
+        if (type === 'shake') {
+          arena.classList.add('shake-effect');
+          showToast('Przeciwnik użył skilla Zygzak! Twój ekran się trzęsie!');
+        } else if (type === 'dushane_opp') {
+          showToast('Przeciwnik użył Dushane (-0.15s błędu)!');
+        } else if (type === 'tony_opp') {
+          // Hides target and adds 1.00s penalty
+          document.getElementById('target-time-display').innerText = '???';
+          showToast('Przeciwnik użył Tony Soprano! Twój cel czasowy został ukryty (+1s kary!)');
+        } else if (type === 'speedup') {
+          arena.classList.add('speedup-active');
+          speedupMultiplier = 2.0; // multiplier for elapsed calculation (virtual speedup)
+          showToast('Przeciwnik zainfekował Cię skillem WhiteToes! Czas leci 2x szybciej!');
+        }
+      });
+
+      socket.on('round_result', ({ winner, scores, yourDiff, oppDiff, target }) => {
+        const resultScreen = document.getElementById('round-result-screen');
+        const resultTitle = document.getElementById('round-result-title');
+        
+        document.getElementById('res-target').innerText = `${target.toFixed(2)}s`;
+        document.getElementById('res-your-diff').innerText = `+${yourDiff.toFixed(4)}s`;
+        document.getElementById('res-opp-diff').innerText = `+${oppDiff.toFixed(4)}s`;
+
+        if (winner === 'draw') {
+          resultTitle.innerText = 'REMIS';
+          resultTitle.className = 'result-title draw';
+        } else if (winner === currentUser.nick) {
+          resultTitle.innerText = 'ZWYCIĘSTWO RUNDY!';
+          resultTitle.className = 'result-title victory';
+        } else {
+          resultTitle.innerText = 'PORAŻKA RUNDY!';
+          resultTitle.className = 'result-title defeat';
+        }
+
+        resultScreen.style.display = 'flex';
+      });
+
+      socket.on('game_over', ({ winner, reward, lpChange, newRank, newLp, prevRank, prevLp }) => {
+        setTimeout(() => {
+          document.getElementById('round-result-screen').style.display = 'none';
+          
+          if (winner === currentUser.nick) {
+            showToast(`Gratulacje! Wygrałeś mecz! ${reward || ''}`);
+          } else {
+            showToast(`Przegrałeś mecz. ${reward || ''}`);
+          }
+
+          if (lpChange !== undefined) {
+            // Show rank animation modal
+            showRankAnimation(prevRank, prevLp, newRank, newLp, lpChange);
+            
+            // Sync user state
+            currentUser.rank = newRank;
+            currentUser.lp = newLp;
+          }
+
+          // Fetch updated profile
+          fetchUserData();
+          switchTab('lobby');
+        }, 3000);
+      });
+
+      socket.on('opponent_disconnected', () => {
+        showToast('Przeciwnik rozłączył się!');
+      });
+    }
+
+    function logout() {
+      localStorage.removeItem('hextech_user');
+      currentUser = null;
+      if (socket) socket.disconnect();
+      document.getElementById('main-header').style.display = 'none';
+      document.getElementById('auth-view').style.display = 'block';
+      switchView('auth-view');
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      activeTab = tab;
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      // Mark active header tab button
+      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking'));
+      if (clickedBtn) clickedBtn.classList.add('active');
+
+      if (tab === 'lobby') {
+        switchView('lobby-view');
+      } else if (tab === 'shop') {
+        switchView('shop-view');
+        renderShop();
+      } else if (tab === 'profile') {
+        switchView('profile-view');
+        fetchUserData();
+      } else if (tab === 'leaderboard') {
+        switchView('leaderboard-view');
+        fetchLeaderboard();
+      }
+    }
+
+    function switchView(viewId) {
+      const views = document.querySelectorAll('.view');
+      views.forEach(v => v.classList.remove('active'));
+      document.getElementById(viewId).classList.add('active');
+    }
+
+    // Matchmaking Queues
+    function joinQueue(mode) {
+      queueMode = mode;
+      queueSeconds = 0;
+      document.getElementById('queue-clock').innerText = '00:00';
+      document.getElementById('queue-title-text').innerText = mode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
+      document.getElementById('queue-screen').style.display = 'flex';
+
+      socket.emit('join_queue', { mode, nick: currentUser.nick });
+
+      queueInterval = setInterval(() => {
+        queueSeconds++;
+        const mins = Math.floor(queueSeconds / 60).toString().padStart(2, '0');
+        const secs = (queueSeconds % 60).toString().padStart(2, '0');
+        document.getElementById('queue-clock').innerText = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function cancelQueue() {
+      socket.emit('leave_queue', { mode: queueMode, nick: currentUser.nick });
+      document.getElementById('queue-screen').style.display = 'none';
+      clearInterval(queueInterval);
+    }
+
+    // Stopwatch Controls
+    function triggerStopwatch() {
+      if (!currentGameId) return;
+
+      const btn = document.getElementById('chrono-btn');
+      const status = document.getElementById('chrono-status');
+
+      if (!stopwatchRunning) {
+        // Start stopwatch
+        stopwatchRunning = true;
+        startTime = performance.now();
+        btn.classList.add('running');
+        status.innerText = 'Stoper działa! Naciśnij SPACJĘ lub kliknij by zatrzymać!';
+      } else {
+        // Stop stopwatch
+        stopwatchRunning = false;
+        btn.classList.remove('running');
+        status.innerText = 'Wysyłanie wyniku...';
+
+        const stopTime = performance.now();
+        // Calculate difference taking into account if WhiteToes speedup is active
+        let realDuration = (stopTime - startTime) / 1000;
+        let virtualDuration = realDuration * speedupMultiplier;
+        
+        let diff = Math.abs(virtualDuration - targetTime);
+
+        socket.emit('submit_time', {
+          gameId: currentGameId,
+          nick: currentUser.nick,
+          timeDiff: diff
+        });
+      }
+    }
+
+    // Listen to Spacebar for stopwatch & 'M' for skills
+    window.addEventListener('keydown', (e) => {
+      // Avoid firing when typing in auth forms
+      if (document.activeElement.tagName === 'INPUT') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerStopwatch();
+      }
+
+      if (e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        useActiveSkill();
+      }
+    });
+
+    // Shop render and buy functions
+    function renderShop() {
+      const container = document.getElementById('shop-items-container');
+      container.innerHTML = '';
+
+      champions.forEach(champ => {
+        const isUnlocked = currentUser && currentUser.unlocked_characters.includes(champ.name);
+        const isActive = currentUser && currentUser.activeChampion === champ.name;
+        
+        let btnHtml = '';
+        if (isActive) {
+          btnHtml = `<button class="buy-btn active-champ">Wybrany</button>`;
+        } else if (isUnlocked) {
+          btnHtml = `<button class="buy-btn unlocked" onclick="selectChampion('${champ.name}')">Wybierz</button>`;
+        } else {
+          const canAfford = currentUser && currentUser.coins >= champ.cost;
+          btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyChampion('${champ.name}', ${champ.cost})">Kup</button>`;
+        }
+
+        container.innerHTML += `
+          <div class="shop-card">
+            <div>
+              <div class="shop-card-icon">
+                <i class="fa-solid ${champ.icon}"></i>
+              </div>
+              <h3>${champ.name}</h3>
+              <div class="champ-price">
+                <i class="fa-solid fa-coins"></i> ${champ.cost === 0 ? 'Darmowy' : champ.cost}
+              </div>
+              <p class="champ-skill-desc">${champ.desc}</p>
+            </div>
+            ${btnHtml}
+          </div>
+        `;
+      });
+    }
+
+    async function buyChampion(name, cost) {
+      if (currentUser.coins < cost) {
+        showToast('Masz za mało monet!');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, character: name, cost })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          currentUser.coins = data.coins;
+          currentUser.unlocked_characters = data.unlocked_characters;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          renderShop();
+          showToast(`Odblokowano postać: ${name}!`);
+        } else {
+          showToast(data.error);
+        }
+      } catch (err) {
+        showToast('Błąd zakupu');
+      }
+    }
+
+    function selectChampion(name) {
+      currentUser.activeChampion = name;
+      localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+      renderShop();
+      showToast(`Wybrano postać: ${name}`);
+    }
+
+    // Render skill HUD in the Game View
+    function renderSkillHUD() {
+      const hud = document.getElementById('skill-hud-list');
+      hud.innerHTML = '';
+
+      const champ = champions.find(c => c.name === currentUser.activeChampion);
+      if (!champ) return;
+
+      const disabledClass = skillUsedInMatch ? 'disabled' : '';
+
+      hud.innerHTML = `
+        <div class="hud-skill-btn ${disabledClass}" onclick="useActiveSkill()">
+          <i class="fa-solid ${champ.icon}"></i>
+          <span class="key-bind">M</span>
+          <div class="tooltip">
+            <strong>${champ.name} Skill</strong><br>
+            ${champ.desc}
+          </div>
+        </div>
+      `;
+    }
+
+    function useActiveSkill() {
+      if (!currentGameId || skillUsedInMatch) return;
+      
+      skillUsedInMatch = true;
+      renderSkillHUD(); // disable button
+
+      socket.emit('use_skill', {
+        gameId: currentGameId,
+        nick: currentUser.nick,
+        skill: currentUser.activeChampion
+      });
+    }
+
+    // Profile & History Fetching
+    async function fetchUserData() {
+      if (!currentUser) return;
+      try {
+        const response = await fetch(`/api/profile/${currentUser.nick}`);
+        if (response.ok) {
+          const data = await response.json();
+          currentUser.coins = data.coins;
+          currentUser.lp = data.lp;
+          currentUser.rank = data.rank;
+          currentUser.unlocked_characters = data.unlocked_characters;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+
+          // Fill Profile tab elements
+          document.getElementById('prof-nick').innerText = data.nick;
+          document.getElementById('prof-rank').innerText = data.rank;
+          document.getElementById('prof-lp').innerText = `${data.lp} LP`;
+          document.getElementById('prof-coins').innerText = data.coins;
+          document.getElementById('prof-games').innerText = data.history.length;
+
+          // History list
+          const list = document.getElementById('prof-history-list');
+          list.innerHTML = '';
+          if (data.history.length === 0) {
+            list.innerHTML = '<p style="color: var(--text-muted);">Brak rozegranych meczów.</p>';
+          } else {
+            data.history.forEach(match => {
+              const opponent = match.player1 === currentUser.nick ? match.player2 : match.player1;
+              const isWin = match.winner === currentUser.nick;
+              const itemClass = isWin ? 'win' : 'loss';
+              
+              list.innerHTML += `
+                <div class="history-item ${itemClass}">
+                  <div class="history-item-left">
+                    <span class="history-opp">vs ${opponent}</span>
+                    <span class="history-mode">${match.mode === 'ranked' ? 'Ranked' : 'Draft'}</span>
+                  </div>
+                  <span class="history-score">${match.score}</span>
+                </div>
+              `;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile', err);
+      }
+    }
+
+    // Leaderboard Fetching
+    async function fetchLeaderboard() {
+      try {
+        const response = await fetch('/api/leaderboard');
+        if (response.ok) {
+          const data = await response.json();
+          const tbody = document.getElementById('leaderboard-body');
+          tbody.innerHTML = '';
+          
+          data.forEach((row, index) => {
+            tbody.innerHTML += `
+              <tr>
+                <td class="rank-cell">#${index + 1}</td>
+                <td>${row.nick}</td>
+                <td>${row.rank}</td>
+                <td class="lp-cell">${row.lp} LP</td>
+                <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
+              </tr>
+            `;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch leaderboard', err);
+      }
+    }
+
+    // Ranks animation logic
+    function showRankAnimation(prevRank, prevLp, newRank, newLp, lpChange) {
+      const modal = document.getElementById('rank-animation-modal');
+      const title = document.getElementById('rank-anim-title');
+      const prevDisplay = document.getElementById('rank-anim-prev');
+      const newDisplay = document.getElementById('rank-anim-new');
+      const lpDetail = document.getElementById('rank-anim-lp-detail');
+
+      prevDisplay.innerText = `${prevRank} (${prevLp} LP)`;
+      newDisplay.innerText = `${newRank} (${newLp} LP)`;
+      
+      const changeText = lpChange >= 0 ? `+${lpChange} LP` : `${lpChange} LP`;
+      lpDetail.innerText = `Różnica punktów: ${changeText}`;
+
+      if (prevRank !== newRank) {
+        // Did rank increase or decrease?
+        const isPromotion = lpChange >= 0;
+        title.innerText = isPromotion ? 'AWANS W RANZE!' : 'SPADEK W RANZE!';
+        title.className = isPromotion ? 'rank-modal-title promo' : 'rank-modal-title demo';
+      } else {
+        title.innerText = 'KONIEC MECZU';
+        title.className = 'rank-modal-title';
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeRankModal() {
+      document.getElementById('rank-animation-modal').style.display = 'none';
+    }
+
+    // System Toast
+    function showToast(msg) {
+      const toast = document.getElementById('system-toast');
+      toast.innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
