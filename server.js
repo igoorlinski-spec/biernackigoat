@@ -229,6 +229,7 @@ const queues = {
   ranked: []
 };
 
+const onlineUsers = {}; // Map nick -> socket.id
 const activeGames = {};
 
 io.on('connection', (socket) => {
@@ -236,49 +237,56 @@ io.on('connection', (socket) => {
 
   socket.on('register_connection', (nick) => {
     playerNick = nick;
-    socket.join(nick); // join personal room for direct notification
-    console.log(`Player ${nick} connected via WebSocket.`);
+    onlineUsers[nick] = socket.id;
+    socket.join(nick);
+    console.log(`Player ${nick} connected via WebSocket. Socket ID: ${socket.id}`);
   });
 
   socket.on('join_queue', ({ mode, nick }) => {
     playerNick = nick;
+    onlineUsers[nick] = socket.id;
+
     if (!queues[mode].includes(nick)) {
       queues[mode].push(nick);
       console.log(`${nick} joined ${mode} queue.`);
     }
 
     // Try matchmaking
-    if (queues[mode].length >= 2) {
-      const p1 = queues[mode].shift();
-      const p2 = queues[mode].shift();
-
-      const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-      const game = {
-        id: gameId,
-        mode,
-        player1: p1,
-        player2: p2,
-        scores: { [p1]: 0, [p2]: 0 },
-        round: 1,
-        targetTime: 0,
-        roundInputs: {},
-        skillsUsed: { [p1]: false, [p2]: false },
-        activeEffects: { [p1]: {}, [p2]: {} }
-      };
-
-      activeGames[gameId] = game;
-
-      // Join game rooms
-      io.to(p1).emit('match_found', { gameId, opponent: p2, mode, role: 'player1' });
-      io.to(p2).emit('match_found', { gameId, opponent: p1, mode, role: 'player2' });
-
-      startNewRound(gameId);
-    }
+    matchmake(mode);
   });
 
   socket.on('leave_queue', ({ mode, nick }) => {
     queues[mode] = queues[mode].filter(n => n !== nick);
     console.log(`${nick} left ${mode} queue.`);
+  });
+
+  // Practice Mode (Tryb Treningowy)
+  socket.on('start_practice', ({ nick }) => {
+    playerNick = nick;
+    onlineUsers[nick] = socket.id;
+
+    const gameId = `practice_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const botNick = 'Bot Ezreal';
+    
+    const game = {
+      id: gameId,
+      mode: 'practice',
+      player1: nick,
+      player2: botNick,
+      scores: { [nick]: 0, [botNick]: 0 },
+      round: 1,
+      targetTime: 0,
+      roundInputs: {},
+      skillsUsed: { [nick]: false, [botNick]: false },
+      activeEffects: { [nick]: {}, [botNick]: {} }
+    };
+
+    activeGames[gameId] = game;
+
+    // Notify client match found
+    socket.emit('match_found', { gameId, opponent: botNick, mode: 'practice', role: 'player1' });
+    
+    startNewRound(gameId);
   });
 
   // Gameplay
@@ -304,28 +312,46 @@ io.on('connection', (socket) => {
 
     const opponent = game.player1 === nick ? game.player2 : game.player1;
 
-    if (skill === 'Zygzak') {
-      // Opponent screen shakes/turns red
-      io.to(opponent).emit('skill_triggered', { type: 'shake' });
-    } else if (skill === 'Dushane') {
-      // Subtracts 0.15s from own diff (applied during evaluation)
-      game.activeEffects[nick].dushane = true;
-      io.to(nick).emit('skill_triggered', { type: 'dushane_self' });
-      io.to(opponent).emit('skill_triggered', { type: 'dushane_opp' });
-    } else if (skill === 'Tony Soprano') {
-      // Adds 1.00s to opponent, hides target
-      game.activeEffects[opponent].tony = true;
-      io.to(opponent).emit('skill_triggered', { type: 'tony_opp' });
-      io.to(nick).emit('skill_triggered', { type: 'tony_self' });
-    } else if (skill === 'WhiteToes') {
-      // Opponent time ticks 2x faster
-      game.activeEffects[opponent].speedup = true;
-      io.to(opponent).emit('skill_triggered', { type: 'speedup' });
+    // If opponent is bot, we don't emit socket, we just apply effect to bot
+    if (opponent === 'Bot Ezreal') {
+      if (skill === 'Zygzak') {
+        // Shakes bot? Bot doesn't care visually, but maybe increases bot's error
+        game.activeEffects[opponent].shake = true;
+      } else if (skill === 'Dushane') {
+        game.activeEffects[nick].dushane = true;
+        socket.emit('skill_triggered', { type: 'dushane_self' });
+      } else if (skill === 'Tony Soprano') {
+        game.activeEffects[opponent].tony = true;
+        socket.emit('skill_triggered', { type: 'tony_self' });
+      } else if (skill === 'WhiteToes') {
+        game.activeEffects[opponent].speedup = true;
+      }
+      return;
+    }
+
+    // Normal multiplayer skill propagation
+    const oppSocketId = onlineUsers[opponent];
+    if (oppSocketId) {
+      if (skill === 'Zygzak') {
+        io.to(oppSocketId).emit('skill_triggered', { type: 'shake' });
+      } else if (skill === 'Dushane') {
+        game.activeEffects[nick].dushane = true;
+        io.to(onlineUsers[nick]).emit('skill_triggered', { type: 'dushane_self' });
+        io.to(oppSocketId).emit('skill_triggered', { type: 'dushane_opp' });
+      } else if (skill === 'Tony Soprano') {
+        game.activeEffects[opponent].tony = true;
+        io.to(oppSocketId).emit('skill_triggered', { type: 'tony_opp' });
+        io.to(onlineUsers[nick]).emit('skill_triggered', { type: 'tony_self' });
+      } else if (skill === 'WhiteToes') {
+        game.activeEffects[opponent].speedup = true;
+        io.to(oppSocketId).emit('skill_triggered', { type: 'speedup' });
+      }
     }
   });
 
   socket.on('disconnect', () => {
     if (playerNick) {
+      delete onlineUsers[playerNick];
       queues.draft = queues.draft.filter(n => n !== playerNick);
       queues.ranked = queues.ranked.filter(n => n !== playerNick);
 
@@ -334,13 +360,58 @@ io.on('connection', (socket) => {
         const game = activeGames[gameId];
         if (game.player1 === playerNick || game.player2 === playerNick) {
           const opponent = game.player1 === playerNick ? game.player2 : game.player1;
-          io.to(opponent).emit('opponent_disconnected');
+          if (opponent !== 'Bot Ezreal') {
+            const oppSocketId = onlineUsers[opponent];
+            if (oppSocketId) {
+              io.to(oppSocketId).emit('opponent_disconnected');
+            }
+          }
           finishGame(gameId, opponent, true);
         }
       }
     }
   });
 });
+
+function matchmake(mode) {
+  // Filter queue for users who are actually online
+  queues[mode] = queues[mode].filter(nick => onlineUsers[nick] !== undefined);
+
+  if (queues[mode].length >= 2) {
+    const p1 = queues[mode].shift();
+    const p2 = queues[mode].shift();
+
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const game = {
+      id: gameId,
+      mode,
+      player1: p1,
+      player2: p2,
+      scores: { [p1]: 0, [p2]: 0 },
+      round: 1,
+      targetTime: 0,
+      roundInputs: {},
+      skillsUsed: { [p1]: false, [p2]: false },
+      activeEffects: { [p1]: {}, [p2]: {} }
+    };
+
+    activeGames[gameId] = game;
+
+    // Send events to both players
+    const s1 = onlineUsers[p1];
+    const s2 = onlineUsers[p2];
+
+    if (s1 && s2) {
+      io.to(s1).emit('match_found', { gameId, opponent: p2, mode, role: 'player1' });
+      io.to(s2).emit('match_found', { gameId, opponent: p1, mode, role: 'player2' });
+      startNewRound(gameId);
+    } else {
+      // Re-queue whoever is still online
+      if (s1) queues[mode].unshift(p1);
+      if (s2) queues[mode].unshift(p2);
+    }
+  }
+}
 
 function startNewRound(gameId) {
   const game = activeGames[gameId];
@@ -354,16 +425,73 @@ function startNewRound(gameId) {
   game.activeEffects[game.player1] = {};
   game.activeEffects[game.player2] = {};
 
-  io.to(game.player1).emit('new_round', {
-    round: game.round,
-    targetTime: game.targetTime,
-    scores: game.scores
-  });
-  io.to(game.player2).emit('new_round', {
-    round: game.round,
-    targetTime: game.targetTime,
-    scores: game.scores
-  });
+  // Notify Player 1
+  const s1 = onlineUsers[game.player1];
+  if (s1) {
+    io.to(s1).emit('new_round', {
+      round: game.round,
+      targetTime: game.targetTime,
+      scores: game.scores
+    });
+  }
+
+  // Notify Player 2 (if human)
+  if (game.player2 !== 'Bot Ezreal') {
+    const s2 = onlineUsers[game.player2];
+    if (s2) {
+      io.to(s2).emit('new_round', {
+        round: game.round,
+        targetTime: game.targetTime,
+        scores: game.scores
+      });
+    }
+  } else {
+    // Simulate Bot Ezreal's play
+    simulateBotPlay(gameId);
+  }
+}
+
+function simulateBotPlay(gameId) {
+  const game = activeGames[gameId];
+  if (!game) return;
+
+  const bot = 'Bot Ezreal';
+  const target = game.targetTime;
+
+  // Wait a randomized amount of time (simulating stopwatch run)
+  const delayMs = (target + (Math.random() * 1.5 - 0.2)) * 1000;
+
+  setTimeout(() => {
+    const game = activeGames[gameId];
+    if (!game) return;
+
+    // Decide if bot uses its skill (Zygzak)
+    if (!game.skillsUsed[bot] && Math.random() < 0.3) {
+      game.skillsUsed[bot] = true;
+      game.activeEffects[game.player1].shake = true;
+      const s1 = onlineUsers[game.player1];
+      if (s1) {
+        io.to(s1).emit('skill_triggered', { type: 'shake' });
+      }
+    }
+
+    // Bot calculates its target error
+    // Base bot accuracy error
+    let botError = Math.random() * 0.35; // average error of ~0.17s
+    if (game.activeEffects[bot].tony) {
+      botError += 1.00; // Tony Soprano penalty
+    }
+    if (game.activeEffects[bot].shake) {
+      botError += 0.15; // Shaked penalty
+    }
+
+    game.roundInputs[bot] = botError;
+
+    // Check if player already submitted
+    if (Object.keys(game.roundInputs).length === 2) {
+      evaluateRound(gameId);
+    }
+  }, Math.max(1000, delayMs));
 }
 
 function evaluateRound(gameId) {
@@ -402,20 +530,31 @@ function evaluateRound(gameId) {
     game.scores[p2]++;
   }
 
-  io.to(p1).emit('round_result', {
-    winner: roundWinner,
-    scores: game.scores,
-    yourDiff: diff1,
-    oppDiff: diff2,
-    target: game.targetTime
-  });
-  io.to(p2).emit('round_result', {
-    winner: roundWinner,
-    scores: game.scores,
-    yourDiff: diff2,
-    oppDiff: diff1,
-    target: game.targetTime
-  });
+  // Send results to p1
+  const s1 = onlineUsers[p1];
+  if (s1) {
+    io.to(s1).emit('round_result', {
+      winner: roundWinner,
+      scores: game.scores,
+      yourDiff: diff1,
+      oppDiff: diff2,
+      target: game.targetTime
+    });
+  }
+
+  // Send results to p2 (if human)
+  if (p2 !== 'Bot Ezreal') {
+    const s2 = onlineUsers[p2];
+    if (s2) {
+      io.to(s2).emit('round_result', {
+        winner: roundWinner,
+        scores: game.scores,
+        yourDiff: diff2,
+        oppDiff: diff1,
+        target: game.targetTime
+      });
+    }
+  }
 
   // Check game over
   const pointsToWin = game.mode === 'ranked' ? 3 : 5;
@@ -438,59 +577,83 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
   const loserNick = game.player1 === winnerNick ? game.player2 : game.player1;
   const scoreStr = `${game.scores[game.player1]}-${game.scores[game.player2]}`;
 
-  // Save to match history
-  db.run(
-    'INSERT INTO matches (player1, player2, winner, mode, score) VALUES (?, ?, ?, ?, ?)',
-    [game.player1, game.player2, winnerNick, game.mode, scoreStr]
-  );
+  // Save to match history (only if not training against bot)
+  if (game.mode !== 'practice') {
+    db.run(
+      'INSERT INTO matches (player1, player2, winner, mode, score) VALUES (?, ?, ?, ?, ?)',
+      [game.player1, game.player2, winnerNick, game.mode, scoreStr]
+    );
 
-  // Update stats
-  if (game.mode === 'draft') {
-    // Draft rewards: 50 coins per point won. Winner gets +250 coins bonus.
-    const rewardW = game.scores[winnerNick] * 50 + 250;
-    const rewardL = game.scores[loserNick] * 50;
+    // Update stats
+    if (game.mode === 'draft') {
+      const rewardW = game.scores[winnerNick] * 50 + 250;
+      const rewardL = game.scores[loserNick] * 50;
 
-    db.serialize(() => {
-      db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick]);
-      db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick]);
-    });
+      db.serialize(() => {
+        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick]);
+        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick]);
+      });
 
-    io.to(winnerNick).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
-    io.to(loserNick).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
-  } else if (game.mode === 'ranked') {
-    // Ranked rewards/penalties: Wins +20 to +30 LP. Losses -15 to -20 LP.
-    const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
-    const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
+      const sW = onlineUsers[winnerNick];
+      const sL = onlineUsers[loserNick];
+      if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
+      if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
 
-    db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
-      if (winUser) {
-        const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-        db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick]);
-        io.to(winnerNick).emit('game_over', {
-          winner: winnerNick,
-          lpChange: lpGain,
-          newRank: nextW.rank,
-          newLp: nextW.lp,
-          prevRank: winUser.rank,
-          prevLp: winUser.lp
-        });
-      }
-    });
+    } else if (game.mode === 'ranked') {
+      const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
+      const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
-    db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
-      if (loseUser) {
-        const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-        db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick]);
-        io.to(loserNick).emit('game_over', {
-          winner: winnerNick,
-          lpChange: lpLoss,
-          newRank: nextL.rank,
-          newLp: nextL.lp,
-          prevRank: loseUser.rank,
-          prevLp: loseUser.lp
-        });
-      }
-    });
+      db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
+        if (winUser) {
+          const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
+          db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick]);
+          const sW = onlineUsers[winnerNick];
+          if (sW) {
+            io.to(sW).emit('game_over', {
+              winner: winnerNick,
+              lpChange: lpGain,
+              newRank: nextW.rank,
+              newLp: nextW.lp,
+              prevRank: winUser.rank,
+              prevLp: winUser.lp
+            });
+          }
+        }
+      });
+
+      db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
+        if (loseUser) {
+          const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
+          db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick]);
+          const sL = onlineUsers[loserNick];
+          if (sL) {
+            io.to(sL).emit('game_over', {
+              winner: winnerNick,
+              lpChange: lpLoss,
+              newRank: nextL.rank,
+              newLp: nextL.lp,
+              prevRank: loseUser.rank,
+              prevLp: loseUser.lp
+            });
+          }
+        }
+      });
+    }
+  } else {
+    // Practice Mode rewards (+50 coins for win, +10 for loss)
+    const humanPlayer = game.player1;
+    const isHumanWinner = winnerNick === humanPlayer;
+    const coinsReward = isHumanWinner ? 50 : 10;
+
+    db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [coinsReward, humanPlayer]);
+
+    const sHuman = onlineUsers[humanPlayer];
+    if (sHuman) {
+      io.to(sHuman).emit('game_over', {
+        winner: winnerNick,
+        reward: `+${coinsReward} Coins (Trening)`
+      });
+    }
   }
 
   delete activeGames[gameId];

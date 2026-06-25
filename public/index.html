@@ -326,9 +326,9 @@
 
     .modes-container {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 30px;
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
     }
 
@@ -358,6 +358,10 @@
 
     .mode-card.ranked::before {
       background: var(--gold-primary);
+    }
+
+    .mode-card.practice::before {
+      background: var(--text-muted);
     }
 
     .mode-card:hover {
@@ -1278,6 +1282,15 @@
           </div>
           <button class="mode-btn" onclick="joinQueue('ranked')">Graj Ranked</button>
         </div>
+        <!-- Practice Mode -->
+        <div class="mode-card practice">
+          <div>
+            <i class="fa-solid fa-graduation-cap" style="color: var(--text-muted); text-shadow: 0 0 15px rgba(255,255,255,0.2);"></i>
+            <h3>Trening</h3>
+            <p>Graj przeciwko Bot Ezreal. Spokojna rozgrywka do 3 punktów bez stresu i LP. Zdobądź +50 monet za wygraną lub +10 monet za przegraną.</p>
+          </div>
+          <button class="mode-btn" onclick="startPractice()">Trenuj z Botem</button>
+        </div>
       </div>
     </div>
 
@@ -1746,6 +1759,12 @@
       socket.emit('leave_queue', { mode: queueMode, nick: currentUser.nick });
       document.getElementById('queue-screen').style.display = 'none';
       clearInterval(queueInterval);
+    }
+
+    // Practice Mode (Tryb Treningowy)
+    function startPractice() {
+      if (!socket) return;
+      socket.emit('start_practice', { nick: currentUser.nick });
     }
 
     // Stopwatch Controls
