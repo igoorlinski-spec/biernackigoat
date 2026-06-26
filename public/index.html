@@ -3414,6 +3414,24 @@
     </div>
   </div>
 
+  <!-- Duplicate Choice Modal -->
+  <div id="duplicate-choice-modal" class="queue-overlay" style="display:none; z-index:1100;">
+    <div style="background: var(--glass-bg); border: 2px solid var(--gold-primary); border-radius: 12px; padding: 30px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.9); backdrop-filter: blur(20px);">
+      <h3 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 2px;">Wylosowano Duplikat!</h3>
+      <div style="margin-bottom: 20px;">
+        <div style="width: 90px; height: 90px; border-radius: 50%; overflow: hidden; border: 2px solid var(--gold-primary); margin: 0 auto 15px auto; box-shadow: 0 0 15px rgba(200,170,110,0.3);">
+          <img id="duplicate-modal-icon-img" src="" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <h4 id="duplicate-modal-icon-name" style="color: #fff; font-size: 1.25rem; font-family: var(--font-title); margin-bottom: 10px;"></h4>
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4;">Wylosowałeś ikonę, którą już posiadasz. Czy chcesz zachować powtórkę w ekwipunku do wymian, czy sprzedać ją?</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+        <button class="mode-btn" id="duplicate-keep-btn" style="width: 100%;" onclick="resolveDuplicateChoice('keep')">Zachowaj powtórkę</button>
+        <button class="auth-btn" id="duplicate-sell-btn" style="width: 100%; border-color: #ffd700;" onclick="resolveDuplicateChoice('sell')">Sprzedaj za monety</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Rank Animation Modal -->
   <div id="rank-animation-modal" class="rank-modal">
     <div class="rank-modal-box">
@@ -5065,10 +5083,9 @@
         tape.style.transition = 'transform 6s cubic-bezier(0.08, 0.8, 0.12, 1)';
         tape.style.transform = 'translateX(' + targetX + 'px)';
 
-        setTimeout(() => {
+        setTimeout(async () => {
           rouletteSpinning = false;
           currentUser.coins = data.newCoins;
-          currentUser.unlocked_icons = data.unlocked_icons;
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
           
@@ -5076,15 +5093,35 @@
           btn.classList.remove('disabled');
           statusText.innerText = 'Dostępna (30 Coins)';
 
-          if (isLegendary) {
-            playLegendarySound();
-            showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
-          } else if (isDuplicate) {
+          if (isDuplicate) {
             playChestOpenSound();
-            showToast(`Otrzymałeś ikonę: ${winDetails.displayName} (Duplikat - zwrot 15 monet!).`);
+            showDuplicateChoiceModal(winDetails, data.refundAmount);
           } else {
-            playChestOpenSound();
-            showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+            // Auto claim
+            try {
+              const keepResponse = await fetch('/api/claim-chest-choice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nick: currentUser.nick, choice: 'keep' })
+              });
+              const keepData = await keepResponse.json();
+              if (keepResponse.ok) {
+                currentUser.unlocked_icons = keepData.unlocked_icons;
+                currentUser.coins = keepData.newCoins;
+                localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+                updateUserUIElements();
+              }
+            } catch(e) {
+              console.error(e);
+            }
+
+            if (isLegendary) {
+              playLegendarySound();
+              showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
+            } else {
+              playChestOpenSound();
+              showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+            }
           }
         }, 6100);
 
@@ -5205,10 +5242,9 @@
         tape.style.transition = 'transform 6s cubic-bezier(0.08, 0.8, 0.12, 1)';
         tape.style.transform = 'translateX(' + targetX + 'px)';
 
-        setTimeout(() => {
+        setTimeout(async () => {
           rouletteSpinning = false;
           currentUser.coins = data.newCoins;
-          currentUser.unlocked_icons = data.unlocked_icons;
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
           
@@ -5216,15 +5252,35 @@
           btn.classList.remove('disabled');
           statusText.innerText = 'Dostępna (80 Coins)';
 
-          if (isLegendary) {
-            playLegendarySound();
-            showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
-          } else if (isDuplicate) {
+          if (isDuplicate) {
             playChestOpenSound();
-            showToast(`Otrzymałeś ikonę: ${winDetails.displayName} (Duplikat - zwrot 40 monet!).`);
+            showDuplicateChoiceModal(winDetails, data.refundAmount);
           } else {
-            playChestOpenSound();
-            showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+            // Auto claim
+            try {
+              const keepResponse = await fetch('/api/claim-chest-choice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nick: currentUser.nick, choice: 'keep' })
+              });
+              const keepData = await keepResponse.json();
+              if (keepResponse.ok) {
+                currentUser.unlocked_icons = keepData.unlocked_icons;
+                currentUser.coins = keepData.newCoins;
+                localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+                updateUserUIElements();
+              }
+            } catch(e) {
+              console.error(e);
+            }
+
+            if (isLegendary) {
+              playLegendarySound();
+              showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
+            } else {
+              playChestOpenSound();
+              showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+            }
           }
         }, 6100);
 
@@ -6768,6 +6824,44 @@
         showToast('Wymiana zrealizowana pomyślnie!');
         // Refresh profile
         fetchUserData();
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
+    }
+
+    function showDuplicateChoiceModal(winDetails, refundAmount) {
+      document.getElementById('duplicate-modal-icon-img').src = winDetails.image;
+      document.getElementById('duplicate-modal-icon-name').innerText = winDetails.displayName;
+      document.getElementById('duplicate-sell-btn').innerText = `Sprzedaj za ${refundAmount} monet`;
+      document.getElementById('duplicate-choice-modal').style.display = 'flex';
+    }
+
+    async function resolveDuplicateChoice(choice) {
+      document.getElementById('duplicate-choice-modal').style.display = 'none';
+      if (!currentUser) return;
+      try {
+        const response = await fetch('/api/claim-chest-choice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, choice })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast('Błąd zapisu wyboru: ' + data.error);
+          return;
+        }
+
+        currentUser.unlocked_icons = data.unlocked_icons;
+        currentUser.coins = data.newCoins;
+        localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+        updateUserUIElements();
+
+        if (choice === 'keep') {
+          showToast(`Zachowałeś powtórkę ikony profilowej!`);
+        } else {
+          showToast(`Sprzedano duplikat! Otrzymałeś monety.`);
+        }
       } catch (err) {
         console.error(err);
         showToast('Błąd połączenia.');

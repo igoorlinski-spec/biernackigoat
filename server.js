@@ -120,6 +120,12 @@ async function initializeDatabase() {
     try {
       await query(`ALTER TABLE users ADD COLUMN perfect_timings INTEGER DEFAULT 0`);
     } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN pending_chest_icon TEXT`);
+    } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN pending_chest_refund INTEGER DEFAULT 0`);
+    } catch(e) {}
 
     await query(`
       CREATE TABLE IF NOT EXISTS matches (
@@ -458,22 +464,23 @@ app.post('/api/claim-paid-chest', async (req, res) => {
 
     const roll = Math.random() * 100;
     if (roll <= 1.0) {
-      rewardIcon = 'irys';
+      rewardIcon = 'irys'; // Starka
       isLegendary = true;
     } else {
-      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha'];
+      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha', 'stary_irys'];
       rewardIcon = pool[Math.floor(Math.random() * pool.length)];
     }
 
     let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
     const isDuplicate = icons.includes(rewardIcon);
+    const refundAmount = 15;
 
     let finalCoins = user.coins - cost;
-    icons.push(rewardIcon);
 
+    // Save as pending instead of updating inventory immediately
     await query(
-      'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
-      [finalCoins, icons.join(','), nick]
+      'UPDATE users SET coins = $1, pending_chest_icon = $2, pending_chest_refund = $3 WHERE nick = $4',
+      [finalCoins, rewardIcon, refundAmount, nick]
     );
 
     res.json({
@@ -481,8 +488,8 @@ app.post('/api/claim-paid-chest', async (req, res) => {
       rewardIcon,
       isLegendary,
       isDuplicate,
-      newCoins: finalCoins,
-      unlocked_icons: icons
+      refundAmount,
+      newCoins: finalCoins
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -510,10 +517,7 @@ app.post('/api/claim-fame-chest', async (req, res) => {
       rewardIcon = 'young_maga';
       isLegendary = true;
     } else if (roll <= 2.0) {
-      rewardIcon = 'stary_irys';
-      isLegendary = true;
-    } else if (roll <= 3.0) {
-      rewardIcon = 'irys';
+      rewardIcon = 'irys'; // Starka
       isLegendary = true;
     } else {
       const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];
@@ -522,13 +526,14 @@ app.post('/api/claim-fame-chest', async (req, res) => {
 
     let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
     const isDuplicate = icons.includes(rewardIcon);
+    const refundAmount = 40;
 
     let finalCoins = user.coins - cost;
-    icons.push(rewardIcon);
 
+    // Save as pending instead of updating inventory immediately
     await query(
-      'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
-      [finalCoins, icons.join(','), nick]
+      'UPDATE users SET coins = $1, pending_chest_icon = $2, pending_chest_refund = $3 WHERE nick = $4',
+      [finalCoins, rewardIcon, refundAmount, nick]
     );
 
     res.json({
@@ -536,6 +541,48 @@ app.post('/api/claim-fame-chest', async (req, res) => {
       rewardIcon,
       isLegendary,
       isDuplicate,
+      refundAmount,
+      newCoins: finalCoins
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/claim-chest-choice', async (req, res) => {
+  const { nick, choice } = req.body;
+  if (!nick || !choice) return res.status(400).json({ error: 'Brak wymaganych pól' });
+  try {
+    const result = await query('SELECT coins, unlocked_icons, pending_chest_icon, pending_chest_refund FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+
+    const icon = user.pending_chest_icon;
+    const refund = user.pending_chest_refund || 0;
+
+    if (!icon) {
+      return res.status(400).json({ error: 'Brak oczekującej nagrody' });
+    }
+
+    let finalCoins = user.coins;
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+
+    if (choice === 'keep') {
+      icons.push(icon);
+    } else if (choice === 'sell') {
+      finalCoins += refund;
+    } else {
+      return res.status(400).json({ error: 'Nieprawidłowy wybór' });
+    }
+
+    // Clear pending columns
+    await query(
+      'UPDATE users SET coins = $1, unlocked_icons = $2, pending_chest_icon = NULL, pending_chest_refund = 0 WHERE nick = $3',
+      [finalCoins, icons.join(','), nick]
+    );
+
+    res.json({
+      success: true,
       newCoins: finalCoins,
       unlocked_icons: icons
     });
