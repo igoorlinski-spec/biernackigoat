@@ -1506,6 +1506,83 @@
       </div>
     </div>
 
+    <script>
+      // ── AUTH FUNCTIONS (standalone, no dependencies) ──────────────────────
+      function _authMsg(msg, ok) {
+        var el = document.getElementById('auth-msg');
+        el.innerText = msg;
+        el.style.display = 'block';
+        el.style.background = ok ? 'rgba(76,175,80,0.2)' : 'rgba(229,57,53,0.2)';
+        el.style.border = ok ? '1px solid #4caf50' : '1px solid #e53935';
+        el.style.color = ok ? '#69f0ae' : '#ff5252';
+      }
+      function showLoginTab() {
+        document.getElementById('login-tab').style.display = 'block';
+        document.getElementById('reg-tab').style.display = 'none';
+        document.getElementById('tab-login-btn').style.background = 'rgba(200,170,110,0.2)';
+        document.getElementById('tab-login-btn').style.color = '#c8aa6e';
+        document.getElementById('tab-reg-btn').style.background = 'transparent';
+        document.getElementById('tab-reg-btn').style.color = '#666';
+        document.getElementById('auth-msg').style.display = 'none';
+      }
+      function showRegTab() {
+        document.getElementById('login-tab').style.display = 'none';
+        document.getElementById('reg-tab').style.display = 'block';
+        document.getElementById('tab-reg-btn').style.background = 'rgba(200,170,110,0.2)';
+        document.getElementById('tab-reg-btn').style.color = '#c8aa6e';
+        document.getElementById('tab-login-btn').style.background = 'transparent';
+        document.getElementById('tab-login-btn').style.color = '#666';
+        document.getElementById('auth-msg').style.display = 'none';
+      }
+      function doLogin() {
+        var nick = document.getElementById('login-nick').value.trim();
+        var pass = document.getElementById('login-pass').value;
+        if (!nick || !pass) { _authMsg('Wpisz nick/email i hasło!', false); return; }
+        var btn = document.getElementById('login-btn');
+        btn.disabled = true; btn.innerText = 'Ładowanie...';
+        fetch('/api/login', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({nickOrEmail: nick, password: pass})
+        }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+        .then(function(res){
+          if (res.ok) {
+            window.currentUser = res.data;
+            localStorage.setItem('hextech_user', JSON.stringify(res.data));
+            if (typeof authorizeUser === 'function') authorizeUser(res.data);
+            else location.reload();
+          } else {
+            _authMsg(res.data.error || 'Błąd logowania', false);
+          }
+        }).catch(function(e){ _authMsg('Błąd sieci: ' + e.message, false); })
+        .finally(function(){ btn.disabled = false; btn.innerText = 'Zaloguj się'; });
+      }
+      function doRegister() {
+        var nick = document.getElementById('reg-nick').value.trim();
+        var email = document.getElementById('reg-email').value.trim();
+        var pass = document.getElementById('reg-pass').value;
+        if (!nick) { _authMsg('Wpisz nick!', false); return; }
+        if (!email) { _authMsg('Wpisz e-mail!', false); return; }
+        if (!pass) { _authMsg('Wpisz hasło!', false); return; }
+        var btn = document.getElementById('reg-btn');
+        btn.disabled = true; btn.innerText = 'Rejestrowanie...';
+        fetch('/api/register', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({nick: nick, email: email, password: pass})
+        }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, data:d}; }); })
+        .then(function(res){
+          if (res.ok) {
+            _authMsg('Konto utworzone! Zaloguj się.', true);
+            showLoginTab();
+          } else {
+            _authMsg(res.data.error || 'Błąd rejestracji', false);
+          }
+        }).catch(function(e){ _authMsg('Błąd sieci: ' + e.message, false); })
+        .finally(function(){ btn.disabled = false; btn.innerText = 'Zarejestruj się'; });
+      }
+    </script>
+
 
     <!-- Lobby View -->
     <div id="lobby-view" class="view">
