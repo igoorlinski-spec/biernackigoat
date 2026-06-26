@@ -2222,7 +2222,7 @@
         character: 'Zygzak',
         cost: 25,
         image: '/assets/images/pharaoh.png',
-        desc: 'Specjalna umiejętność do postaci Zygzak pod przyciskiem [N]. Gracz posiadający ją na koncie może raz na grę kliknąć [N], co na 0,02 sekundy odsłoni licznik na tle wielkiego Faraona.'
+        desc: 'Specjalna umiejętność do postaci Zygzak pod przyciskiem [N]. Gracz posiadający ją na koncie może raz na grę kliknąć [N], co na 0,5 sekundy odsłoni licznik na tle wielkiego Faraona.'
       }
     ];
 
@@ -3302,7 +3302,7 @@
             <span class="key-bind">N</span>
             <div class="tooltip">
               <strong>Piramida</strong><br>
-              Raz na grę odsłania stoper na 0.02s pod wizerunkiem wielkiego Faraona.
+              Raz na grę odsłania stoper na 0.5s pod wizerunkiem wielkiego Faraona.
             </div>
           </div>
         `;
@@ -3345,12 +3345,12 @@
         overlay.style.display = 'flex';
       }
       
-      // Hide after exactly 0.02 seconds (20ms)
+      // Hide after exactly 0.5 seconds (500ms)
       setTimeout(() => {
         if (overlay) {
           overlay.style.display = 'none';
         }
-      }, 20);
+      }, 500);
     }
 
     // Profile & History Fetching
