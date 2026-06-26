@@ -3519,11 +3519,12 @@
       { name: 'popek', displayName: 'Popek', image: '/assets/images/popek.png', cost: 100 },
       { name: 'milosz_kulesza', displayName: 'Miłosz Kulesza', image: '/assets/images/milosz_kulesza.png', cost: 100 },
       { name: 'mr_krycha', displayName: 'Mr Krycha', image: '/assets/images/mr_krycha.png', cost: 100 },
-      { name: 'ishowspeed', displayName: 'iShowSpeed', image: '/assets/images/ishowspeed.png', cost: 100 },
-      { name: 'lewandowski', displayName: 'Lewandowski', image: '/assets/images/lewandowski.png', cost: 100 },
-      { name: 'trzaskowski', displayName: 'Trzaskowski', image: '/assets/images/trzaskowski.png', cost: 100 },
-      { name: 'kaczynski', displayName: 'Kaczyński', image: '/assets/images/kaczynski.png', cost: 100 },
-      { name: 'irys', displayName: 'Stary Irys', image: '/assets/images/irys.png', cost: 99999, isLegendary: true },
+      { name: 'ishowspeed', displayName: 'iShowSpeed', image: '/assets/images/ishowspeed.png', cost: 300 },
+      { name: 'lewandowski', displayName: 'Lewandowski', image: '/assets/images/lewandowski.png', cost: 300 },
+      { name: 'trzaskowski', displayName: 'Trzaskowski', image: '/assets/images/trzaskowski.png', cost: 300 },
+      { name: 'kaczynski', displayName: 'Kaczyński', image: '/assets/images/kaczynski.png', cost: 300 },
+      { name: 'irys', displayName: 'Starka Irys', image: '/assets/images/irys.png', cost: 99999, isLegendary: true },
+      { name: 'stary_irys', displayName: 'Stary Irys', image: '/assets/images/stary_irys.png', cost: 99999, isLegendary: true },
       { name: 'young_maga', displayName: 'Young Maga', image: '/assets/images/young_maga.png', cost: 99999, isLegendary: true }
     ];
 
@@ -5149,9 +5150,11 @@
             cardDetails = winDetails;
           } else {
             const rand = Math.random();
-            if (rand < 0.02) {
+            if (rand < 0.015) {
               cardDetails = getIconDetails('young_maga');
-            } else if (rand < 0.04) {
+            } else if (rand < 0.03) {
+              cardDetails = getIconDetails('stary_irys');
+            } else if (rand < 0.045) {
               cardDetails = getIconDetails('irys');
             } else {
               const dummyPool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];

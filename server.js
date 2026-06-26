@@ -514,6 +514,9 @@ app.post('/api/claim-fame-chest', async (req, res) => {
       rewardIcon = 'young_maga';
       isLegendary = true;
     } else if (roll <= 2.0) {
+      rewardIcon = 'stary_irys';
+      isLegendary = true;
+    } else if (roll <= 3.0) {
       rewardIcon = 'irys';
       isLegendary = true;
     } else {
