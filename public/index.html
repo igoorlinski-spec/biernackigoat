@@ -1315,6 +1315,7 @@
     </div>
     <nav class="nav-tabs">
       <button class="tab-btn active" onclick="switchTab('lobby')">Lobby</button>
+      <button class="tab-btn" onclick="switchTab('training')">Trening</button>
       <button class="tab-btn" onclick="switchTab('shop')">Sklep</button>
       <button class="tab-btn" onclick="switchTab('profile')">Profil</button>
       <button class="tab-btn" onclick="switchTab('leaderboard')">Ranking</button>
@@ -1387,9 +1388,9 @@
           <div>
             <i class="fa-solid fa-graduation-cap" style="color: var(--text-muted); text-shadow: 0 0 15px rgba(255,255,255,0.2);"></i>
             <h3>Trening</h3>
-            <p>Graj przeciwko Bot Ezreal. Spokojna rozgrywka do 3 punktów bez stresu i LP. Zdobądź +50 monet za wygraną lub +10 monet za przegraną.</p>
+            <p>Graj przeciwko 3 różnym botom (Zygzak, Dushane, Tony Soprano) o zróżnicowanych poziomach trudności i unikalnych umiejętnościach.</p>
           </div>
-          <button class="mode-btn" onclick="startPractice()">Trenuj z Botem</button>
+          <button class="mode-btn" onclick="switchTab('training')">Wybierz bota</button>
         </div>
         <!-- Pharaoh Event Mode -->
         <div class="mode-card pharaoh-event" style="border-color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);">
@@ -1600,6 +1601,51 @@
             <!-- Dynamically generated leaderboard rows -->
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Training View -->
+    <div id="training-view" class="view">
+      <div class="lobby-header">
+        <h2>Wybierz poziom treningu</h2>
+        <p>Trenuj swoje wyczucie czasu z botami o różnych poziomach trudności i umiejętnościach.</p>
+      </div>
+      <div class="modes-container">
+        <!-- Easy Bot -->
+        <div class="mode-card practice-easy" style="border-color: #4caf50; box-shadow: 0 0 15px rgba(76, 175, 80, 0.15);">
+          <div>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="/assets/images/zygzak.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #4caf50; object-fit: cover; box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);">
+            </div>
+            <h3 style="color: #4caf50;">Łatwy (Bot Ezreal)</h3>
+            <p><strong>Postać:</strong> Zygzak<br><strong>Trudność:</strong> Najłatwiejszy przeciwnik, popełnia duże błędy czasowe. Od czasu do czasu może wstrząsnąć Twoim ekranem.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+          </div>
+          <button class="mode-btn" style="border-color: #4caf50; color: #4caf50;" onclick="startPractice('easy')">Graj (Łatwy)</button>
+        </div>
+
+        <!-- Medium Bot -->
+        <div class="mode-card practice-medium" style="border-color: #ff9800; box-shadow: 0 0 15px rgba(255, 152, 0, 0.15);">
+          <div>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="/assets/images/dushane.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #ff9800; object-fit: cover; box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);">
+            </div>
+            <h3 style="color: #ff9800;">Średni (Bot Dushane)</h3>
+            <p><strong>Postać:</strong> Dushane<br><strong>Trudność:</strong> Średni przeciwnik, ma dobrą precyzję i potrafi korygować swoje błędy czasowe za pomocą skupienia.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+          </div>
+          <button class="mode-btn" style="border-color: #ff9800; color: #ff9800;" onclick="startPractice('medium')">Graj (Średni)</button>
+        </div>
+
+        <!-- Hard Bot -->
+        <div class="mode-card practice-hard" style="border-color: #f44336; box-shadow: 0 0 15px rgba(244, 67, 54, 0.15);">
+          <div>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <img src="/assets/images/tony.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #f44336; object-fit: cover; box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);">
+            </div>
+            <h3 style="color: #f44336;">Trudny (Bot Soprano)</h3>
+            <p><strong>Postać:</strong> Tony Soprano<br><strong>Trudność:</strong> Najtrudniejszy przeciwnik. Trafia z zabójczą dokładnością i może nałożyć na Ciebie 1 sekundę kary.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+          </div>
+          <button class="mode-btn" style="border-color: #f44336; color: #f44336;" onclick="startPractice('hard')">Graj (Trudny)</button>
+        </div>
       </div>
     </div>
   </main>
@@ -1921,11 +1967,13 @@
       buttons.forEach(btn => btn.classList.remove('active'));
       
       // Mark active header tab button
-      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking'));
+      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening'));
       if (clickedBtn) clickedBtn.classList.add('active');
 
       if (tab === 'lobby') {
         switchView('lobby-view');
+      } else if (tab === 'training') {
+        switchView('training-view');
       } else if (tab === 'shop') {
         switchView('shop-view');
         renderShop();
@@ -1969,9 +2017,13 @@
     }
 
     // Practice Mode (Tryb Treningowy)
-    function startPractice() {
+    function startPractice(difficulty = 'easy') {
       if (!socket) return;
-      socket.emit('start_practice', { nick: currentUser.nick, champion: currentUser.activeChampion });
+      socket.emit('start_practice', { 
+        nick: currentUser.nick, 
+        champion: currentUser.activeChampion,
+        difficulty: difficulty 
+      });
     }
 
     // Stopwatch Controls

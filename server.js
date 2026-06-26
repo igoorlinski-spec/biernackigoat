@@ -347,18 +347,30 @@ io.on('connection', (socket) => {
   });
 
   // Practice Mode (Tryb Treningowy)
-  socket.on('start_practice', ({ nick, champion }) => {
+  socket.on('start_practice', ({ nick, champion, difficulty }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
 
     const gameId = `practice_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const botNick = 'Bot Ezreal';
-    userChampions[botNick] = 'Zygzak'; // Bot uses Zygzak
+    
+    let botNick = 'Bot Ezreal';
+    let botChamp = 'Zygzak';
+    
+    if (difficulty === 'medium') {
+      botNick = 'Bot Dushane';
+      botChamp = 'Dushane';
+    } else if (difficulty === 'hard') {
+      botNick = 'Bot Soprano';
+      botChamp = 'Tony Soprano';
+    }
+    
+    userChampions[botNick] = botChamp;
     
     const game = {
       id: gameId,
       mode: 'practice',
+      difficulty: difficulty || 'easy',
       player1: nick,
       player2: botNick,
       scores: { [nick]: 0, [botNick]: 0 },
@@ -375,7 +387,7 @@ io.on('connection', (socket) => {
     socket.emit('match_found', { 
       gameId, 
       opponent: botNick, 
-      opponentChamp: 'Zygzak', 
+      opponentChamp: botChamp, 
       mode: 'practice', 
       role: 'player1' 
     });
@@ -390,22 +402,45 @@ io.on('connection', (socket) => {
 
     game.roundInputs[nick] = timeDiff;
 
-    // Generate Bot Ezreal's time instantly when player submits
-    if (game.player2 === 'Bot Ezreal') {
-      const bot = 'Bot Ezreal';
+    // Generate Bot's time instantly when player submits
+    if (game.player2.startsWith('Bot')) {
+      const bot = game.player2;
+      const botChamp = userChampions[bot] || 'Zygzak';
       
       // Bot decides to use skill (30% chance per round if not used yet)
       if (!game.skillsUsed[bot] && Math.random() < 0.3) {
         game.skillsUsed[bot] = true;
-        game.activeEffects[game.player1].shake = true;
-        socket.emit('skill_triggered', { type: 'shake' });
+        if (botChamp === 'Zygzak') {
+          game.activeEffects[game.player1].shake = true;
+          socket.emit('skill_triggered', { type: 'shake' });
+        } else if (botChamp === 'Dushane') {
+          game.activeEffects[bot].dushane = true;
+        } else if (botChamp === 'Tony Soprano') {
+          game.activeEffects[game.player1].tony = true;
+          socket.emit('skill_triggered', { type: 'tony_opp' });
+        }
       }
 
-      // Generate bot's error (signed difference, between -0.9s and +0.9s)
-      let botError = (Math.random() * 1.8 - 0.9);
-      // 25% chance of a larger mistake
-      if (Math.random() < 0.25) {
-        botError += (Math.random() * 2.0 - 1.0);
+      // Generate bot's error (signed difference) based on difficulty
+      let botError = 0;
+      if (game.difficulty === 'easy') {
+        // Easy McQueen Bot: timing error -1.2s to +1.2s
+        botError = (Math.random() * 2.4 - 1.2);
+        if (Math.random() < 0.35) {
+          botError += (Math.random() * 2.0 - 1.0);
+        }
+      } else if (game.difficulty === 'medium') {
+        // Medium Dushane Bot: timing error -0.5s to +0.5s
+        botError = (Math.random() * 1.0 - 0.5);
+        if (Math.random() < 0.2) {
+          botError += (Math.random() * 0.8 - 0.4);
+        }
+      } else if (game.difficulty === 'hard') {
+        // Hard Soprano Bot: timing error -0.2s to +0.2s
+        botError = (Math.random() * 0.4 - 0.2);
+        if (Math.random() < 0.1) {
+          botError += (Math.random() * 0.3 - 0.15);
+        }
       }
 
       // Apply effects
@@ -439,7 +474,7 @@ io.on('connection', (socket) => {
     const opponent = game.player1 === nick ? game.player2 : game.player1;
 
     // If opponent is bot, we don't emit socket, we just apply effect to bot
-    if (opponent === 'Bot Ezreal') {
+    if (opponent.startsWith('Bot')) {
       if (skill === 'Zygzak') {
         game.activeEffects[opponent].shake = true;
       } else if (skill === 'Dushane') {
@@ -486,7 +521,7 @@ io.on('connection', (socket) => {
         const game = activeGames[gameId];
         if (game.player1 === playerNick || game.player2 === playerNick) {
           const opponent = game.player1 === playerNick ? game.player2 : game.player1;
-          if (opponent !== 'Bot Ezreal') {
+          if (!opponent.startsWith('Bot')) {
             const oppSocketId = onlineUsers[opponent];
             if (oppSocketId) {
               io.to(oppSocketId).emit('opponent_disconnected');
@@ -640,7 +675,7 @@ function evaluateRound(gameId) {
   }
 
   // Send results to p2 (if human)
-  if (p2 !== 'Bot Ezreal') {
+  if (!p2.startsWith('Bot')) {
     const s2 = onlineUsers[p2];
     if (s2) {
       io.to(s2).emit('round_result', {
@@ -722,7 +757,7 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         rewardPlayer(winnerNick, rewardW, 0, { winner: winnerNick, reward: `+${rewardW} Coins` });
         
         // Reward Loser (if human)
-        if (loserNick !== 'Bot Ezreal') {
+        if (!loserNick.startsWith('Bot')) {
           rewardPlayer(loserNick, rewardL, 0, { winner: winnerNick, reward: `+${rewardL} Coins` });
         }
 
@@ -752,7 +787,7 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         });
 
         // Reward Loser (if human)
-        if (loserNick !== 'Bot Ezreal') {
+        if (!loserNick.startsWith('Bot')) {
           db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
             if (err) console.error('Error fetching ranked loser details:', err);
             if (loseUser) {
