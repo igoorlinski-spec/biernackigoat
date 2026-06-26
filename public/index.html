@@ -635,35 +635,42 @@
       width: 180px;
       height: 180px;
       border-radius: 50%;
-      background: radial-gradient(circle, #102a3a 0%, #001520 100%);
-      border: 4px solid var(--gold-primary);
+      background: radial-gradient(circle, #3a0a0a 0%, #1a0000 100%);
+      border: 4px solid #e53935;
       cursor: pointer;
       display: flex;
       justify-content: center;
       align-items: center;
-      color: var(--gold-primary);
+      color: #ff4655;
       font-size: 2.5rem;
-      box-shadow: 0 0 20px rgba(200, 170, 110, 0.3), inset 0 0 20px rgba(0,0,0,0.8);
+      box-shadow: 0 0 25px rgba(229, 57, 53, 0.5), inset 0 0 20px rgba(0,0,0,0.8);
       transition: all 0.2s ease;
       position: relative;
     }
 
     .stopwatch-btn:hover {
       transform: scale(1.05);
-      border-color: var(--cyan-primary);
-      color: var(--cyan-primary);
-      box-shadow: 0 0 30px rgba(10, 200, 185, 0.4);
+      border-color: #ff1744;
+      color: #ff1744;
+      box-shadow: 0 0 40px rgba(255, 23, 68, 0.7);
     }
 
     .stopwatch-btn:active {
       transform: scale(0.95);
+      box-shadow: 0 0 60px rgba(255, 23, 68, 0.9);
     }
 
     .stopwatch-btn.running {
-      border-color: var(--cyan-primary);
-      color: var(--cyan-primary);
-      box-shadow: 0 0 40px var(--cyan-primary);
-      animation: pulse 1.5s infinite;
+      border-color: #ff4655;
+      color: #ff4655;
+      box-shadow: 0 0 50px #e53935, 0 0 80px rgba(229,57,53,0.4);
+      animation: pulse-red 1.5s infinite;
+    }
+
+    @keyframes pulse-red {
+      0% { transform: scale(1); box-shadow: 0 0 50px #e53935; }
+      50% { transform: scale(1.05); box-shadow: 0 0 80px #ff1744, 0 0 120px rgba(255,23,68,0.4); }
+      100% { transform: scale(1); box-shadow: 0 0 50px #e53935; }
     }
 
     @keyframes pulse {
@@ -1500,6 +1507,15 @@
           </div>
           <button class="mode-btn" onclick="joinQueue('ranked')">Graj Ranked</button>
         </div>
+        <!-- Kanapa Mode -->
+        <div class="mode-card" style="border-color: #ff7043; background: linear-gradient(135deg, rgba(255,112,67,0.08) 0%, rgba(10,10,20,0.95) 100%);">
+          <div>
+            <i class="fa-solid fa-couch" style="color: #ff7043;"></i>
+            <h3 style="color: #ff7043;">Tryb Kanapa 🛋️</h3>
+            <p>Dwóch graczy obok siebie na jednym urządzeniu. Każdy klika po kolei. +10 monet za każdą wygraną rundę dla właściciela konta!</p>
+          </div>
+          <button class="mode-btn" style="background: linear-gradient(135deg, #bf360c, #e64a19); border-color: #ff7043; box-shadow: 0 4px 15px rgba(255,112,67,0.3);" onclick="openKanapaSetup()">Graj Kanapę</button>
+        </div>
       </div>
     </div>
 
@@ -1552,7 +1568,7 @@
             <button class="stopwatch-btn" id="chrono-btn" onclick="triggerStopwatch()">
               <i class="fa-solid fa-stopwatch"></i>
             </button>
-            <div class="stopwatch-status" id="chrono-status">Kliknij lub naciśnij SPACJĘ aby uruchomić</div>
+            <div class="stopwatch-status" id="chrono-status">&nbsp;</div>
           </div>
 
           <div class="arena-footer">
@@ -2441,9 +2457,28 @@
       });
     }
 
+    // Click sound generator
+    function playClickSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(220, ctx.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.08);
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.12);
+      } catch(e) {}
+    }
+
     // Stopwatch Controls
     function triggerStopwatch() {
       if (!currentGameId) return;
+      playClickSound();
 
       const btn = document.getElementById('chrono-btn');
       const status = document.getElementById('chrono-status');
@@ -2453,18 +2488,16 @@
         stopwatchRunning = true;
         startTime = performance.now();
         btn.classList.add('running');
-        status.innerText = 'Stoper działa! Naciśnij SPACJĘ lub kliknij by zatrzymać!';
+        status.innerText = ' ';
       } else {
         // Stop stopwatch
         stopwatchRunning = false;
         btn.classList.remove('running');
-        status.innerText = 'Wysyłanie wyniku...';
+        status.innerText = ' ';
 
         const stopTime = performance.now();
-        // Calculate difference taking into account if WhiteToes speedup is active
         let realDuration = (stopTime - startTime) / 1000;
         let virtualDuration = realDuration * speedupMultiplier;
-        
         let signedDiff = virtualDuration - targetTime;
 
         socket.emit('submit_time', {
@@ -3908,6 +3941,255 @@
         clearInterval(spinInterval);
         slotsSpinning = false;
         document.getElementById('slots-spin-btn').disabled = false;
+    }
+  </script>
+
+  <!-- KANAPA MODE MODAL -->
+  <div id="kanapa-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background: linear-gradient(135deg, #0a0a14 0%, #1a0a05 100%); border: 2px solid #ff7043; border-radius: 12px; padding: 35px; max-width: 460px; width: 90%; box-shadow: 0 0 40px rgba(255,112,67,0.3); text-align:center;">
+      <h2 style="color: #ff7043; font-family: var(--font-title); margin-bottom: 8px; font-size: 1.8rem;">🛋️ Tryb Kanapa</h2>
+      <p style="color: var(--text-muted); margin-bottom: 25px; font-size: 0.9rem;">Dwaj gracze obok siebie – każdy klika po kolei!</p>
+      <div style="display:flex; flex-direction:column; gap:15px; margin-bottom:25px;">
+        <div style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.4); padding:12px 16px; border-radius:8px; border:1px solid rgba(255,112,67,0.2);">
+          <label style="color:#fff; min-width:90px; text-align:left; font-weight:bold;">Gracz 1:</label>
+          <input id="kanapa-p1" type="text" maxlength="20" placeholder="Imię gracza 1" style="flex:1; background:#000; color:#ff7043; border:1px solid #ff7043; border-radius:6px; padding:8px 12px; font-size:1rem; font-weight:bold;">
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.4); padding:12px 16px; border-radius:8px; border:1px solid rgba(255,112,67,0.2);">
+          <label style="color:#fff; min-width:90px; text-align:left; font-weight:bold;">Gracz 2:</label>
+          <input id="kanapa-p2" type="text" maxlength="20" placeholder="Imię gracza 2" style="flex:1; background:#000; color:#ff7043; border:1px solid #ff7043; border-radius:6px; padding:8px 12px; font-size:1rem; font-weight:bold;">
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.4); padding:12px 16px; border-radius:8px; border:1px solid rgba(255,112,67,0.2);">
+          <label style="color:#fff; min-width:90px; text-align:left; font-weight:bold;">Rundy:</label>
+          <select id="kanapa-rounds" style="flex:1; background:#000; color:#ff7043; border:1px solid #ff7043; border-radius:6px; padding:8px 12px; font-size:1rem; font-weight:bold;">
+            <option value="3">3 rundy</option>
+            <option value="5" selected>5 rund</option>
+            <option value="7">7 rund</option>
+            <option value="10">10 rund</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; justify-content:center;">
+        <button onclick="startKanapa()" style="background:linear-gradient(135deg,#bf360c,#e64a19); color:#fff; border:2px solid #ff7043; border-radius:8px; padding:12px 30px; font-size:1.1rem; font-weight:bold; cursor:pointer; font-family:var(--font-title); letter-spacing:1px;">START!</button>
+        <button onclick="closeKanapaModal()" style="background:rgba(255,255,255,0.05); color:#aaa; border:1px solid #444; border-radius:8px; padding:12px 24px; font-size:1rem; cursor:pointer;">Anuluj</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KANAPA GAME VIEW -->
+  <div id="kanapa-view" class="view" style="display:none;">
+    <div style="max-width:550px; margin:0 auto; text-align:center; padding:20px;">
+      <div style="background:rgba(0,0,0,0.6); border:2px solid #ff7043; border-radius:12px; padding:30px; box-shadow:0 0 30px rgba(255,112,67,0.2);">
+        <!-- Scoreboard -->
+        <div id="kanapa-scoreboard" style="display:flex; justify-content:space-around; margin-bottom:20px; background:rgba(0,0,0,0.4); border-radius:8px; padding:15px;">
+          <div>
+            <div id="kanapa-name1" style="color:#ff7043; font-weight:bold; font-size:1.1rem; font-family:var(--font-title);">P1</div>
+            <div id="kanapa-score1" style="font-size:2.5rem; font-weight:bold; color:#fff;">0</div>
+          </div>
+          <div style="color:var(--text-muted); font-size:2rem; align-self:center;">VS</div>
+          <div>
+            <div id="kanapa-name2" style="color:#4fc3f7; font-weight:bold; font-size:1.1rem; font-family:var(--font-title);">P2</div>
+            <div id="kanapa-score2" style="font-size:2.5rem; font-weight:bold; color:#fff;">0</div>
+          </div>
+        </div>
+
+        <!-- Round info -->
+        <div style="margin-bottom:15px;">
+          <div id="kanapa-round-label" style="color:var(--text-muted); font-size:0.85rem; letter-spacing:2px; text-transform:uppercase;">Runda 1 / 5</div>
+          <div style="margin-top:8px; background:rgba(255,112,67,0.1); border:1px dashed rgba(255,112,67,0.4); border-radius:8px; padding:12px;">
+            <div style="font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;">Cel czasowy stopera:</div>
+            <div id="kanapa-target" style="font-size:2.5rem; font-weight:bold; color:#ff7043; font-family:monospace;">?.??s</div>
+          </div>
+        </div>
+
+        <!-- Current player -->
+        <div id="kanapa-whose-turn" style="font-size:1.1rem; font-weight:bold; margin-bottom:20px; padding:10px; background:rgba(255,112,67,0.1); border-radius:8px; border:1px solid rgba(255,112,67,0.3);"></div>
+
+        <!-- Stopwatch button -->
+        <div style="display:flex; justify-content:center; margin-bottom:20px;">
+          <button class="stopwatch-btn" id="kanapa-btn" onclick="kanapaClick()"><i class="fa-solid fa-stopwatch"></i></button>
+        </div>
+
+        <!-- Result display -->
+        <div id="kanapa-round-result" style="min-height:50px; font-size:1.1rem; font-weight:bold;"></div>
+        <div id="kanapa-game-over" style="display:none; margin-top:20px;">
+          <div id="kanapa-winner-text" style="font-size:1.8rem; font-weight:bold; font-family:var(--font-title); margin-bottom:15px;"></div>
+          <button onclick="resetKanapa()" style="background:linear-gradient(135deg,#bf360c,#e64a19); color:#fff; border:2px solid #ff7043; border-radius:8px; padding:12px 30px; font-size:1rem; font-weight:bold; cursor:pointer; margin-right:10px;">Zagraj Ponownie</button>
+          <button onclick="switchTab('lobby')" style="background:rgba(255,255,255,0.05); color:#aaa; border:1px solid #444; border-radius:8px; padding:12px 20px; font-size:0.95rem; cursor:pointer;">Wróć do Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── KANAPA MODE ─────────────────────────────────────────────────────────
+    let kanapaState = null;
+
+    function openKanapaSetup() {
+      document.getElementById('kanapa-modal').style.display = 'flex';
+    }
+    function closeKanapaModal() {
+      document.getElementById('kanapa-modal').style.display = 'none';
+    }
+
+    function startKanapa() {
+      const p1 = document.getElementById('kanapa-p1').value.trim();
+      const p2 = document.getElementById('kanapa-p2').value.trim();
+      const totalRounds = parseInt(document.getElementById('kanapa-rounds').value);
+      if (!p1 || !p2) { showToast('Wpisz imiona obu graczy!'); return; }
+      if (p1 === p2) { showToast('Gracze muszą mieć różne imiona!'); return; }
+
+      closeKanapaModal();
+
+      kanapaState = {
+        p1, p2, totalRounds,
+        currentRound: 1,
+        scores: { [p1]: 0, [p2]: 0 },
+        target: 0,
+        phase: 'p1', // 'p1' = waiting for p1, 'p2' = waiting for p2
+        p1Time: null,
+        running: false,
+        startTime: null,
+        coinsEarned: 0
+      };
+
+      // Show kanapa view
+      document.querySelectorAll('.view').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
+      document.getElementById('kanapa-view').style.display = 'block';
+
+      document.getElementById('kanapa-name1').innerText = p1;
+      document.getElementById('kanapa-name2').innerText = p2;
+      document.getElementById('kanapa-score1').innerText = '0';
+      document.getElementById('kanapa-score2').innerText = '0';
+      document.getElementById('kanapa-game-over').style.display = 'none';
+
+      kanapaNewRound();
+    }
+
+    function kanapaNewRound() {
+      const s = kanapaState;
+      s.target = parseFloat((Math.random() * 9.99 + 0.01).toFixed(2));
+      s.phase = 'p1';
+      s.p1Time = null;
+      s.running = false;
+
+      document.getElementById('kanapa-round-label').innerText = `Runda ${s.currentRound} / ${s.totalRounds}`;
+      document.getElementById('kanapa-target').innerText = `${s.target.toFixed(2)}s`;
+      document.getElementById('kanapa-whose-turn').innerHTML = `🎮 Kolej gracza: <span style="color:#ff7043;">${s.p1}</span> — kliknij przycisk!`;
+      document.getElementById('kanapa-round-result').innerText = '';
+
+      const btn = document.getElementById('kanapa-btn');
+      btn.classList.remove('running');
+      btn.disabled = false;
+    }
+
+    function kanapaClick() {
+      const s = kanapaState;
+      if (!s) return;
+      playClickSound();
+
+      const btn = document.getElementById('kanapa-btn');
+
+      if (!s.running) {
+        // START
+        s.running = true;
+        s.startTime = performance.now();
+        btn.classList.add('running');
+        document.getElementById('kanapa-whose-turn').innerHTML = `⏱️ Stoper leci! <span style="color:#ff4655;">Kliknij aby zatrzymać!</span>`;
+      } else {
+        // STOP
+        const elapsed = (performance.now() - s.startTime) / 1000;
+        s.running = false;
+        btn.classList.remove('running');
+        btn.disabled = true;
+
+        if (s.phase === 'p1') {
+          s.p1Time = elapsed;
+          s.phase = 'p2';
+          const diff = Math.abs(elapsed - s.target);
+          document.getElementById('kanapa-round-result').innerHTML =
+            `<span style="color:#ff7043;">${s.p1}</span> zatrzymał na <b>${elapsed.toFixed(3)}s</b> (błąd: ${diff.toFixed(3)}s)<br>Teraz kolej <span style="color:#4fc3f7;">${s.p2}</span>!`;
+
+          setTimeout(() => {
+            document.getElementById('kanapa-whose-turn').innerHTML = `🎮 Kolej gracza: <span style="color:#4fc3f7;">${s.p2}</span> — kliknij przycisk!`;
+            s.running = false;
+            btn.disabled = false;
+          }, 1500);
+
+        } else {
+          // Both played — evaluate
+          const p2Time = elapsed;
+          const diff1 = Math.abs(s.p1Time - s.target);
+          const diff2 = Math.abs(p2Time - s.target);
+
+          let roundWinner = null;
+          if (diff1 < diff2) roundWinner = s.p1;
+          else if (diff2 < diff1) roundWinner = s.p2;
+
+          if (roundWinner) {
+            s.scores[roundWinner]++;
+            // Award 10 coins per won round to account owner
+            if (currentUser) {
+              s.coinsEarned += 10;
+              fetch('/api/kanapa/reward', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nick: currentUser.nick, coins: 10 })
+              }).then(r => r.json()).then(data => {
+                if (data.newCoins !== undefined) currentUser.coins = data.newCoins;
+              }).catch(() => {});
+            }
+          }
+
+          document.getElementById('kanapa-score1').innerText = s.scores[s.p1];
+          document.getElementById('kanapa-score2').innerText = s.scores[s.p2];
+
+          let resultHTML = `<span style="color:#4fc3f7;">${s.p2}</span> zatrzymał na <b>${p2Time.toFixed(3)}s</b> (błąd: ${diff2.toFixed(3)}s)<br>`;
+          if (roundWinner) {
+            const col = roundWinner === s.p1 ? '#ff7043' : '#4fc3f7';
+            resultHTML += `<span style="color:${col}; font-size:1.3rem;">🏆 ${roundWinner} wygrywa rundę!</span>`;
+            if (currentUser) resultHTML += ` <span style="color:gold; font-size:0.9rem;">(+10 monet)</span>`;
+          } else {
+            resultHTML += `<span style="color:#aaa;">🤝 Remis rundy!</span>`;
+          }
+          document.getElementById('kanapa-round-result').innerHTML = resultHTML;
+
+          // Check game over
+          if (s.currentRound >= s.totalRounds) {
+            setTimeout(() => kanapaGameOver(), 2000);
+          } else {
+            s.currentRound++;
+            setTimeout(() => kanapaNewRound(), 2500);
+          }
+        }
+      }
+    }
+
+    function kanapaGameOver() {
+      const s = kanapaState;
+      const s1 = s.scores[s.p1], s2 = s.scores[s.p2];
+      let winnerHTML = '';
+
+      if (s1 > s2) {
+        winnerHTML = `🏆 <span style="color:#ff7043;">${s.p1}</span> WYGRYWA!<br><span style="font-size:1rem; color:var(--text-muted);">${s1} : ${s2}</span>`;
+      } else if (s2 > s1) {
+        winnerHTML = `🏆 <span style="color:#4fc3f7;">${s.p2}</span> WYGRYWA!<br><span style="font-size:1rem; color:var(--text-muted);">${s1} : ${s2}</span>`;
+      } else {
+        winnerHTML = `🤝 Remis! <span style="font-size:1rem; color:var(--text-muted);">${s1} : ${s2}</span>`;
+      }
+
+      if (currentUser && s.coinsEarned > 0) {
+        winnerHTML += `<br><span style="color:gold; font-size:0.95rem;">Zarobiłeś łącznie ${s.coinsEarned} monet! 💰</span>`;
+        fetchUserData();
+      }
+
+      document.getElementById('kanapa-winner-text').innerHTML = winnerHTML;
+      document.getElementById('kanapa-game-over').style.display = 'block';
+      document.getElementById('kanapa-round-result').innerText = '';
+    }
+
+    function resetKanapa() {
+      if (!kanapaState) return;
+      startKanapa();
     }
   </script>
 </body>

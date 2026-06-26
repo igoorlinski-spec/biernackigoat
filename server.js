@@ -636,7 +636,22 @@ app.post('/api/claim-pharaoh-star', async (req, res) => {
   }
 });
 
-// ─── Real-time Game State ─────────────────────────────────────────────────────
+// Kanapa mode - reward coins per won round
+app.post('/api/kanapa/reward', async (req, res) => {
+  const { nick, coins } = req.body;
+  if (!nick || !coins) return res.status(400).json({ error: 'Nick and coins are required' });
+  try {
+    const result = await query('SELECT coins FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const newCoins = (result.rows[0].coins || 0) + parseInt(coins);
+    await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCoins, nick]);
+    res.json({ success: true, newCoins });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 
 const queues = { draft: [], ranked: [] };
 const onlineUsers = {};
