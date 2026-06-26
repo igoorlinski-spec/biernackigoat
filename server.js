@@ -36,12 +36,18 @@ function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         nick TEXT PRIMARY KEY,
         password TEXT NOT NULL,
-        coins INTEGER DEFAULT 1000,
+        coins INTEGER DEFAULT 0,
         lp INTEGER DEFAULT 0,
         rank TEXT DEFAULT 'Iron 4',
-        unlocked_characters TEXT DEFAULT 'Zygzak'
+        unlocked_characters TEXT DEFAULT 'Zygzak',
+        stars INTEGER DEFAULT 0
       )
     `);
+
+    // Ensure stars column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN stars INTEGER DEFAULT 0`, (err) => {
+      // Ignore if column already exists
+    });
 
     db.run(`
       CREATE TABLE IF NOT EXISTS matches (
@@ -157,6 +163,7 @@ app.post('/api/login', (req, res) => {
         coins: user.coins,
         lp: user.lp,
         rank: user.rank,
+        stars: user.stars || 0,
         unlocked_characters: user.unlocked_characters.split(',')
       });
     });
@@ -165,7 +172,7 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/profile/:nick', (req, res) => {
   const { nick } = req.params;
-  db.get('SELECT nick, coins, lp, rank, unlocked_characters FROM users WHERE nick = ?', [nick], (err, user) => {
+  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters FROM users WHERE nick = ?', [nick], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'Player not found' });
 
@@ -179,6 +186,7 @@ app.get('/api/profile/:nick', (req, res) => {
           coins: user.coins,
           lp: user.lp,
           rank: user.rank,
+          stars: user.stars || 0,
           unlocked_characters: user.unlocked_characters.split(','),
           history: matches
         });
@@ -188,7 +196,7 @@ app.get('/api/profile/:nick', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  db.all('SELECT nick, lp, rank, coins FROM users ORDER BY lp DESC, coins DESC LIMIT 20', [], (err, rows) => {
+  db.all('SELECT nick, lp, rank, coins, stars FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 20', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -576,7 +584,7 @@ function evaluateRound(gameId) {
     game.round++;
     setTimeout(() => {
       startNewRound(gameId);
-    }, 4000); // 4-second delay between rounds
+    }, 1500); // Fast round transition: 1.5-second delay
   }
 }
 
@@ -602,10 +610,12 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const rewardL = game.scores[loserNick] * 50;
 
         db.serialize(() => {
-          db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick], () => {
+          // Winner gets +250 coins and +3 stars
+          db.run('UPDATE users SET coins = coins + ?, stars = stars + 3 WHERE nick = ?', [rewardW, winnerNick], () => {
             const sW = onlineUsers[winnerNick];
-            if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
+            if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
           });
+          // Loser gets +rewardL coins (0 stars)
           db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick], () => {
             const sL = onlineUsers[loserNick];
             if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
@@ -616,14 +626,16 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
         const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
+        // Winner gets +100 coins and +5 stars
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
           if (winUser) {
             const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-            db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 100, stars = stars + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
               const sW = onlineUsers[winnerNick];
               if (sW) {
                 io.to(sW).emit('game_over', {
                   winner: winnerNick,
+                  reward: '+100 Coins, +5 Gwiazdy',
                   lpChange: lpGain,
                   newRank: nextW.rank,
                   newLp: nextW.lp,
@@ -635,14 +647,16 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
           }
         });
 
+        // Loser gets +20 coins (0 stars)
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
           if (loseUser) {
             const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-            db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 20 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
               const sL = onlineUsers[loserNick];
               if (sL) {
                 io.to(sL).emit('game_over', {
                   winner: winnerNick,
+                  reward: '+20 Coins',
                   lpChange: lpLoss,
                   newRank: nextL.rank,
                   newLp: nextL.lp,
@@ -655,7 +669,7 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         });
 
       } else if (game.mode === 'practice') {
-        // Practice Mode rewards (+50 coins for win, +10 for loss)
+        // Practice Mode rewards (+50 coins for win, +10 for loss, 0 stars)
         const humanPlayer = game.player1;
         const isHumanWinner = winnerNick === humanPlayer;
         const coinsReward = isHumanWinner ? 50 : 10;

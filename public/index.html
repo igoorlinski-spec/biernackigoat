@@ -1236,7 +1236,7 @@
   <header id="main-header" style="display: none;">
     <div class="logo-container">
       <i class="fa-solid fa-hourglass-half"></i>
-      <h1>Hextech Chrono</h1>
+      <h1>Władcy Czasu</h1>
     </div>
     <nav class="nav-tabs">
       <button class="tab-btn active" onclick="switchTab('lobby')">Lobby</button>
@@ -1249,6 +1249,10 @@
       <div class="stat-badge coins">
         <i class="fa-solid fa-coins"></i>
         <span id="user-coins">0</span>
+      </div>
+      <div class="stat-badge stars" style="border-color: #ffd700;" title="Gwiazdy">
+        <i class="fa-solid fa-star" style="color: #ffd700; text-shadow: 0 0 5px #ffd700;"></i>
+        <span id="user-stars">0</span>
       </div>
       <div class="stat-badge lp">
         <i class="fa-solid fa-trophy"></i>
@@ -1446,6 +1450,7 @@
               <th>Ranga</th>
               <th>Punkty LP</th>
               <th>Monety</th>
+              <th>Gwiazdy</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
@@ -1593,6 +1598,7 @@
     function updateUserUIElements() {
       document.getElementById('player-tag').innerText = currentUser.nick;
       document.getElementById('user-coins').innerText = currentUser.coins;
+      document.getElementById('user-stars').innerText = currentUser.stars || 0;
       document.getElementById('user-rank-info').innerText = `${currentUser.rank} (${currentUser.lp} LP)`;
     }
 
@@ -1968,6 +1974,7 @@
           currentUser.coins = data.coins;
           currentUser.lp = data.lp;
           currentUser.rank = data.rank;
+          currentUser.stars = data.stars || 0;
           currentUser.unlocked_characters = data.unlocked_characters;
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
@@ -2024,6 +2031,7 @@
                 <td>${row.rank}</td>
                 <td class="lp-cell">${row.lp} LP</td>
                 <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
+                <td><i class="fa-solid fa-star" style="color: #ffd700;"></i> ${row.stars || 0}</td>
               </tr>
             `;
           });
