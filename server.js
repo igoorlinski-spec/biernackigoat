@@ -66,6 +66,11 @@ function initializeDatabase() {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Reset all users' coins to 0 to clean up older testing accounts
+    db.run(`UPDATE users SET coins = 0`, (err) => {
+      if (err) console.error('Error resetting user coins to 0:', err);
+    });
   });
 }
 
