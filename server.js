@@ -810,10 +810,20 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         }
 
       } else if (game.mode === 'practice') {
-        // Practice Mode rewards (+50 coins for win, +10 for loss, 0 stars)
+        // Practice Mode rewards (+50/70/100 coins for win based on bot difficulty, +10 for loss, 0 stars)
         const humanPlayer = game.player1;
         const isHumanWinner = winnerNick === humanPlayer;
-        const coinsReward = isHumanWinner ? 50 : 10;
+        let coinsReward = 10;
+        
+        if (isHumanWinner) {
+          if (game.difficulty === 'medium') {
+            coinsReward = 70;
+          } else if (game.difficulty === 'hard') {
+            coinsReward = 100;
+          } else {
+            coinsReward = 50;
+          }
+        }
 
         rewardPlayer(humanPlayer, coinsReward, 0, {
           winner: winnerNick,
