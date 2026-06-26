@@ -1352,6 +1352,67 @@
       from { transform: scale(0.9); opacity: 0; }
       to { transform: scale(1); opacity: 1; }
     }
+
+    /* Blackjack styles */
+    .bj-card {
+      width: 75px;
+      height: 110px;
+      background: #fdfdfd;
+      color: #0b0e14;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      font-size: 1.2rem;
+      border: 2px solid #ccc;
+      user-select: none;
+      position: relative;
+      animation: dealCard 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+      opacity: 0;
+      transform: translateY(-30px) rotate(-10deg);
+    }
+    @keyframes dealCard {
+      to {
+        opacity: 1;
+        transform: translateY(0) rotate(0);
+      }
+    }
+    .bj-card.red {
+      color: #d32f2f;
+      border-color: #ffcdd2;
+    }
+    .bj-card.black {
+      color: #1a1a1a;
+      border-color: #e0e0e0;
+    }
+    .bj-card-back {
+      background: radial-gradient(circle, #253346 0%, #0f1622 100%) !important;
+      border: 2px solid var(--gold-primary) !important;
+      color: var(--gold-primary) !important;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+    .card-top {
+      display: flex;
+      justify-content: flex-start;
+      line-height: 1;
+    }
+    .card-suit-large {
+      font-size: 2.2rem;
+      align-self: center;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .card-bottom {
+      display: flex;
+      justify-content: flex-end;
+      line-height: 1;
+      transform: rotate(180deg);
+    }
   </style>
 </head>
 <body>
@@ -1367,6 +1428,7 @@
       <button class="tab-btn" onclick="switchTab('training')">Trening</button>
       <button class="tab-btn pharaoh-event-tab-glowing" onclick="switchTab('pharaoh-event')">Event Faraon <i class="fa-solid fa-crown"></i></button>
       <button class="tab-btn" onclick="switchTab('daily-chest')">Skrzynka <i class="fa-solid fa-gift"></i></button>
+      <button class="tab-btn" onclick="switchTab('blackjack')">Black Jack <i class="fa-solid fa-diamond"></i></button>
       <button class="tab-btn" onclick="switchTab('shop')">Sklep</button>
       <button class="tab-btn" onclick="switchTab('profile')">Profil</button>
       <button class="tab-btn" onclick="switchTab('leaderboard')">Ranking</button>
@@ -1562,6 +1624,57 @@
         <div class="arena-footer">
           <p style="color: var(--text-muted); font-size: 0.85rem;">Tylko perfekcyjne 1.00s (tolerancja +/- 0.00s przy zaokrągleniu do 2 miejsc) daje gwiazdkę.</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Blackjack View -->
+    <div id="blackjack-view" class="view">
+      <div class="lobby-header">
+        <h2>Black Jack</h2>
+        <p>Postaw monety i zagraj z krupierem. Zwycięstwo podwaja stawkę (x2). Krupier wygrywa w 70% rozdziałań.</p>
+      </div>
+
+      <div class="blackjack-container" style="max-width: 650px; margin: 0 auto; background: rgba(1, 10, 19, 0.85); border: 2px solid var(--gold-primary); border-radius: 6px; padding: 25px; box-shadow: 0 0 20px rgba(200, 170, 110, 0.15); text-align: center;">
+        
+        <div class="blackjack-board" style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 25px;">
+          <!-- Dealer Section -->
+          <div class="hand-section" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 4px; border: 1px solid rgba(200,170,110,0.15);">
+            <h3 style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; font-family: var(--font-title);">Krupier <span id="dealer-score-badge" style="color: var(--gold-primary); font-weight: bold; margin-left: 5px;">(0)</span></h3>
+            <div id="dealer-cards" style="display: flex; gap: 10px; justify-content: center; min-height: 110px; align-items: center;">
+              <div style="color: var(--text-muted); font-style: italic; font-size: 0.9rem;">Czekam na zakład...</div>
+            </div>
+          </div>
+
+          <!-- Player Section -->
+          <div class="hand-section" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 4px; border: 1px solid rgba(200,170,110,0.15);">
+            <h3 style="color: var(--text-muted); font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; font-family: var(--font-title);">Twoje karty <span id="player-score-badge" style="color: var(--cyan-primary); font-weight: bold; margin-left: 5px;">(0)</span></h3>
+            <div id="player-cards" style="display: flex; gap: 10px; justify-content: center; min-height: 110px; align-items: center;">
+              <div style="color: var(--text-muted); font-style: italic; font-size: 0.9rem;">Rozpocznij grę klikając Rozdaj Karty.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Betting Panel -->
+        <div class="blackjack-controls" id="bj-controls" style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+          <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 4px; border: 1px solid rgba(200, 170, 110, 0.25);">
+            <label for="bj-bet-input" style="color: var(--text-main); font-weight: bold;">Zakład:</label>
+            <input type="number" id="bj-bet-input" min="10" max="500" value="100" style="width: 80px; background: #000; color: var(--gold-primary); border: 1px solid var(--gold-primary); padding: 5px; border-radius: 4px; text-align: center; font-weight: bold; font-family: monospace; font-size: 1.05rem;">
+            <span style="color: var(--text-muted); font-size: 0.85rem;">Monet</span>
+          </div>
+
+          <!-- Quick bets -->
+          <div style="display: flex; gap: 8px;">
+            <button class="shop-tab-btn" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4);" onclick="setBjBet(10)">10</button>
+            <button class="shop-tab-btn" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4);" onclick="setBjBet(50)">50</button>
+            <button class="shop-tab-btn" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4);" onclick="setBjBet(100)">100</button>
+            <button class="shop-tab-btn" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4);" onclick="setBjBet(250)">250</button>
+            <button class="shop-tab-btn" style="padding: 4px 12px; font-size: 0.85rem; background: rgba(0,0,0,0.4);" onclick="setBjBet(500)">500</button>
+          </div>
+
+          <button id="bj-play-btn" class="play-btn" style="margin-top: 5px; padding: 10px 30px; font-size: 1.05rem;" onclick="playBlackjack()">Rozdaj Karty</button>
+        </div>
+
+        <div id="bj-result-message" style="margin-top: 20px; font-size: 1.4rem; font-weight: bold; min-height: 35px; font-family: var(--font-title); letter-spacing: 1px;"></div>
       </div>
     </div>
 
@@ -2077,7 +2190,7 @@
       // Mark active header tab button
       const buttons = document.querySelectorAll('.tab-btn');
       buttons.forEach(btn => btn.classList.remove('active'));
-      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')));
+      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')) || (tab === 'blackjack' && btn.innerText.includes('Black Jack')));
       if (clickedBtn) clickedBtn.classList.add('active');
 
       if (tab === 'lobby') {
@@ -2089,6 +2202,9 @@
         updateChestCooldownUI();
       } else if (tab === 'pharaoh-event') {
         switchView('pharaoh-event-view');
+      } else if (tab === 'blackjack') {
+        switchView('blackjack-view');
+        resetBlackjackUI();
       } else if (tab === 'shop') {
         switchView('shop-view');
         renderShop();
@@ -3002,6 +3118,177 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3500);
+    }
+
+    // Blackjack logic
+    let bjPlaying = false;
+
+    function setBjBet(amount) {
+      if (bjPlaying) return;
+      document.getElementById('bj-bet-input').value = amount;
+    }
+
+    function resetBlackjackUI() {
+      if (bjPlaying) return;
+      document.getElementById('dealer-score-badge').innerText = '(0)';
+      document.getElementById('player-score-badge').innerText = '(0)';
+      document.getElementById('dealer-cards').innerHTML = '<div style="color: var(--text-muted); font-style: italic; font-size: 0.9rem;">Czekam na zakład...</div>';
+      document.getElementById('player-cards').innerHTML = '<div style="color: var(--text-muted); font-style: italic; font-size: 0.9rem;">Rozpocznij grę klikając Rozdaj Karty.</div>';
+      document.getElementById('bj-result-message').innerText = '';
+      document.getElementById('bj-result-message').style.color = '';
+      document.getElementById('bj-play-btn').disabled = false;
+      document.getElementById('bj-play-btn').innerText = 'Rozdaj Karty';
+    }
+
+    function renderBJCard(card, isHidden = false) {
+      if (isHidden) {
+        return `<div class="bj-card bj-card-back"><i class="fa-solid fa-hourglass-half"></i></div>`;
+      }
+      const isRed = card.suit === '♥' || card.suit === '♦';
+      const colorClass = isRed ? 'red' : 'black';
+      return `
+        <div class="bj-card ${colorClass}">
+          <div class="card-top">${card.value}</div>
+          <div class="card-suit-large">${card.suit}</div>
+          <div class="card-bottom">${card.value}</div>
+        </div>
+      `;
+    }
+
+    async function playBlackjack() {
+      if (bjPlaying) return;
+
+      const betInput = document.getElementById('bj-bet-input');
+      const betVal = parseInt(betInput.value, 10);
+
+      if (isNaN(betVal) || betVal < 10 || betVal > 500) {
+        showToast('Zakład musi wynosić od 10 do 500 monet!');
+        return;
+      }
+
+      if (currentUser.coins < betVal) {
+        showToast('Nie masz wystarczającej liczby monet!');
+        return;
+      }
+
+      bjPlaying = true;
+      document.getElementById('bj-play-btn').disabled = true;
+      document.getElementById('bj-play-btn').innerText = 'Rozdawanie...';
+      document.getElementById('bj-result-message').innerText = '';
+
+      const dealerContainer = document.getElementById('dealer-cards');
+      const playerContainer = document.getElementById('player-cards');
+      dealerContainer.innerHTML = '';
+      playerContainer.innerHTML = '';
+
+      try {
+        const response = await fetch('/api/blackjack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, bet: betVal })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          showToast(data.error || 'Wystąpił błąd');
+          bjPlaying = false;
+          resetBlackjackUI();
+          return;
+        }
+
+        currentUser.coins = data.newCoins;
+        localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+        updateUserUIElements();
+
+        const playerHand = data.playerHand;
+        const dealerHand = data.dealerHand;
+
+        // Player card 1
+        setTimeout(() => {
+          playerContainer.innerHTML += renderBJCard(playerHand[0]);
+          document.getElementById('player-score-badge').innerText = `(${playerHand[0].score})`;
+        }, 300);
+
+        // Dealer card 1
+        setTimeout(() => {
+          dealerContainer.innerHTML += renderBJCard(dealerHand[0]);
+          document.getElementById('dealer-score-badge').innerText = `(${dealerHand[0].score})`;
+        }, 700);
+
+        // Player card 2
+        setTimeout(() => {
+          playerContainer.innerHTML += renderBJCard(playerHand[1]);
+          let score = playerHand[0].score + playerHand[1].score;
+          document.getElementById('player-score-badge').innerText = `(${score})`;
+        }, 1100);
+
+        // Dealer card 2 (Face down)
+        setTimeout(() => {
+          dealerContainer.innerHTML += renderBJCard(dealerHand[1], true);
+        }, 1500);
+
+        let lastDelay = 1500;
+
+        // Player Hits
+        for (let i = 2; i < playerHand.length; i++) {
+          const cardIdx = i;
+          lastDelay += 700;
+          setTimeout(() => {
+            playerContainer.innerHTML += renderBJCard(playerHand[cardIdx]);
+            let currentScore = playerHand.slice(0, cardIdx + 1).reduce((acc, c) => acc + c.score, 0);
+            document.getElementById('player-score-badge').innerText = `(${currentScore})`;
+          }, lastDelay);
+        }
+
+        // Reveal Dealer's hidden card
+        lastDelay += 1000;
+        setTimeout(() => {
+          dealerContainer.innerHTML = '';
+          dealerContainer.innerHTML += renderBJCard(dealerHand[0]);
+          dealerContainer.innerHTML += renderBJCard(dealerHand[1]);
+          let dealerScore = dealerHand[0].score + dealerHand[1].score;
+          document.getElementById('dealer-score-badge').innerText = `(${dealerScore})`;
+        }, lastDelay);
+
+        // Dealer Hits
+        for (let i = 2; i < dealerHand.length; i++) {
+          const cardIdx = i;
+          lastDelay += 700;
+          setTimeout(() => {
+            dealerContainer.innerHTML += renderBJCard(dealerHand[cardIdx]);
+            let currentScore = dealerHand.slice(0, cardIdx + 1).reduce((acc, c) => acc + c.score, 0);
+            document.getElementById('dealer-score-badge').innerText = `(${currentScore})`;
+          }, lastDelay);
+        }
+
+        // Show game outcome
+        lastDelay += 800;
+        setTimeout(() => {
+          document.getElementById('player-score-badge').innerText = `(${data.playerScore})`;
+          document.getElementById('dealer-score-badge').innerText = `(${data.dealerScore})`;
+
+          const resultMsg = document.getElementById('bj-result-message');
+          if (data.win) {
+            resultMsg.innerText = `WYGRANA! Zyskujesz +${data.rewardCoins} Monet!`;
+            resultMsg.style.color = 'var(--cyan-primary)';
+            showToast(`Wygrałeś ${data.rewardCoins} monet!`);
+          } else {
+            resultMsg.innerText = `PRZEGRANA! Krupier wygrywa. Tracisz zakład.`;
+            resultMsg.style.color = 'var(--red-primary)';
+            showToast(`Przegrałeś ${betVal} monet.`);
+          }
+          
+          bjPlaying = false;
+          document.getElementById('bj-play-btn').disabled = false;
+          document.getElementById('bj-play-btn').innerText = 'Zagraj Ponownie';
+          fetchUserData();
+        }, lastDelay);
+
+      } catch (err) {
+        showToast('Błąd komunikacji z serwerem');
+        bjPlaying = false;
+        resetBlackjackUI();
+      }
     }
   </script>
 </body>

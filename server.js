@@ -358,6 +358,98 @@ app.post('/api/claim-daily-chest', (req, res) => {
       }
     );
   });
+app.post('/api/blackjack', (req, res) => {
+  const { nick, bet } = req.body;
+  if (!nick || !bet) return res.status(400).json({ error: 'Nick and bet are required' });
+
+  const betAmount = parseInt(bet, 10);
+  if (isNaN(betAmount) || betAmount < 10 || betAmount > 500) {
+    return res.status(400).json({ error: 'Bet must be between 10 and 500' });
+  }
+
+  db.get('SELECT coins FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.coins < betAmount) return res.status(400).json({ error: 'Not enough coins' });
+
+    // Dealer wins 70% of the time, player wins 30%
+    const playerWins = Math.random() < 0.3;
+    let playerTarget, dealerTarget;
+
+    if (playerWins) {
+      playerTarget = 19 + Math.floor(Math.random() * 3); // 19, 20, 21
+      if (Math.random() < 0.5) {
+        dealerTarget = 22 + Math.floor(Math.random() * 5); // 22 to 26 (bust)
+      } else {
+        dealerTarget = 17 + Math.floor(Math.random() * (playerTarget - 17)); // 17 to playerTarget - 1
+      }
+    } else {
+      if (Math.random() < 0.4) {
+        playerTarget = 22 + Math.floor(Math.random() * 5); // Player busts (22 to 26)
+        dealerTarget = 17 + Math.floor(Math.random() * 4); // Dealer stands (17 to 20)
+      } else {
+        playerTarget = 16 + Math.floor(Math.random() * 4); // Player stands (16 to 19)
+        dealerTarget = playerTarget + 1 + Math.floor(Math.random() * (21 - playerTarget)); // Dealer beats player
+      }
+    }
+
+    const generateHand = (targetScore) => {
+      const suits = ['♠', '♥', '♦', '♣'];
+      const hand = [];
+      let currentScore = 0;
+      while (currentScore < targetScore) {
+        let needed = targetScore - currentScore;
+        let cardVal;
+        let cardScore;
+        if (needed > 11) {
+          cardScore = Math.floor(Math.random() * 10) + 2;
+          if (cardScore === 10) {
+            cardVal = ['10', 'J', 'Q', 'K'][Math.floor(Math.random() * 4)];
+          } else if (cardScore === 11) {
+            cardVal = 'A';
+          } else {
+            cardVal = String(cardScore);
+          }
+        } else {
+          cardScore = needed;
+          if (cardScore === 10) {
+            cardVal = ['10', 'J', 'Q', 'K'][Math.floor(Math.random() * 4)];
+          } else if (cardScore === 11) {
+            cardVal = 'A';
+          } else {
+            cardVal = String(cardScore);
+          }
+        }
+        const suit = suits[Math.floor(Math.random() * suits.length)];
+        hand.push({ suit, value: cardVal, score: cardScore });
+        currentScore += cardScore;
+      }
+      return hand;
+    };
+
+    const playerHand = generateHand(playerTarget);
+    const dealerHand = generateHand(dealerTarget);
+
+    let coinDiff = -betAmount;
+    if (playerWins) {
+      coinDiff = betAmount; // +2x bet in total, so net gain is +betAmount
+    }
+    const newCoins = user.coins + coinDiff;
+
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        success: true,
+        win: playerWins,
+        playerHand,
+        dealerHand,
+        playerScore: playerTarget,
+        dealerScore: dealerTarget,
+        newCoins,
+        rewardCoins: playerWins ? betAmount * 2 : 0
+      });
+    });
+  });
 });
 
 app.post('/api/buy', (req, res) => {
