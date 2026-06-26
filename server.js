@@ -940,8 +940,20 @@ function evaluateRound(gameId) {
   let diff1 = game.roundInputs[p1], diff2 = game.roundInputs[p2];
   let val1 = Math.abs(diff1), val2 = Math.abs(diff2);
 
-  if (game.activeEffects[p1].dushane) val1 = Math.max(0, val1 - 0.15);
-  if (game.activeEffects[p2].dushane) val2 = Math.max(0, val2 - 0.15);
+  let dushaneImprovement1 = 0;
+  let dushaneImprovement2 = 0;
+
+  if (game.activeEffects[p1].dushane) {
+    const newVal1 = Math.max(0, val1 - 0.25);
+    dushaneImprovement1 = val1 - newVal1;
+    val1 = newVal1;
+  }
+  if (game.activeEffects[p2].dushane) {
+    const newVal2 = Math.max(0, val2 - 0.25);
+    dushaneImprovement2 = val2 - newVal2;
+    val2 = newVal2;
+  }
+
   if (game.activeEffects[p1].tony) val1 += 1.00;
   if (game.activeEffects[p2].tony) val2 += 1.00;
 
@@ -951,10 +963,30 @@ function evaluateRound(gameId) {
   else { roundWinner = p2; game.scores[p2]++; }
 
   const s1 = onlineUsers[p1];
-  if (s1) io.to(s1).emit('round_result', { winner: roundWinner, scores: game.scores, yourDiff: diff1, oppDiff: diff2, target: game.targetTime });
+  if (s1) {
+    io.to(s1).emit('round_result', {
+      winner: roundWinner,
+      scores: game.scores,
+      yourDiff: diff1,
+      oppDiff: diff2,
+      target: game.targetTime,
+      yourDushaneImprovement: dushaneImprovement1,
+      oppDushaneImprovement: dushaneImprovement2
+    });
+  }
   if (!p2.startsWith('Bot')) {
     const s2 = onlineUsers[p2];
-    if (s2) io.to(s2).emit('round_result', { winner: roundWinner, scores: game.scores, yourDiff: diff2, oppDiff: diff1, target: game.targetTime });
+    if (s2) {
+      io.to(s2).emit('round_result', {
+        winner: roundWinner,
+        scores: game.scores,
+        yourDiff: diff2,
+        oppDiff: diff1,
+        target: game.targetTime,
+        yourDushaneImprovement: dushaneImprovement2,
+        oppDushaneImprovement: dushaneImprovement1
+      });
+    }
   }
 
   const pointsToWin = (game.mode === 'ranked' || game.mode === 'practice') ? 3 : 5;

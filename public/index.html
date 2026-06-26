@@ -1654,6 +1654,7 @@
                 <span class="stat-label">Czas rywala (różnica):</span>
                 <span class="stat-val" id="res-opp-diff">+0.20s</span>
               </div>
+              <div id="res-dushane-info" style="margin-top: 12px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); font-size: 0.85rem; color: #ff9800; text-align: center; display: none; line-height: 1.4;"></div>
             </div>
             <div class="target-label">Następna runda rozpocznie się za chwilę...</div>
           </div>
@@ -2210,7 +2211,7 @@
     // Available Champions data
     const champions = [
       { name: 'Zygzak', cost: 0, image: '/assets/images/zygzak.png', skillImage: '/assets/images/skill_zygzak.jpg', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
-      { name: 'Dushane', cost: 2500, image: '/assets/images/dushane.png', skillImage: '/assets/images/skill_dushane.png', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
+      { name: 'Dushane', cost: 2500, image: '/assets/images/dushane.png', skillImage: '/assets/images/skill_dushane.png', desc: 'Poprawia Twój wynik o 0.25 s (koryguje błąd czasowy w stronę celu).' },
       { name: 'Tony Soprano', cost: 4000, image: '/assets/images/tony.png', skillImage: '/assets/images/skill_tony.png', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
       { name: 'WhiteToes', cost: 5000, image: '/assets/images/whitetoes.png', skillImage: '/assets/images/skill_whitetoes.png', desc: 'Czaruje rywala. Czas na stoperze przeciwnika leci 2x szybciej (psuje mu obliczenia)!' }
     ];
@@ -2499,7 +2500,7 @@
         }
       });
 
-      socket.on('round_result', ({ winner, scores, yourDiff, oppDiff, target }) => {
+      socket.on('round_result', ({ winner, scores, yourDiff, oppDiff, target, yourDushaneImprovement, oppDushaneImprovement }) => {
         const resultScreen = document.getElementById('round-result-screen');
         const resultTitle = document.getElementById('round-result-title');
         
@@ -2511,6 +2512,25 @@
 
         document.getElementById('res-your-diff').innerText = formatDiff(yourDiff);
         document.getElementById('res-opp-diff').innerText = formatDiff(oppDiff);
+
+        const infoDiv = document.getElementById('res-dushane-info');
+        if (infoDiv) {
+          let textParts = [];
+          if (yourDushaneImprovement > 0) {
+            const adjustedDiff = yourDiff + (yourDiff < 0 ? yourDushaneImprovement : -yourDushaneImprovement);
+            textParts.push(`✨ <b>Dushane:</b> Twój wynik został poprawiony o <b>${yourDushaneImprovement.toFixed(2)}s</b> (z ${formatDiff(yourDiff)} na ${formatDiff(adjustedDiff)})!`);
+          }
+          if (oppDushaneImprovement > 0) {
+            const adjustedDiffOpp = oppDiff + (oppDiff < 0 ? oppDushaneImprovement : -oppDushaneImprovement);
+            textParts.push(`⚠️ <b>Dushane rywala:</b> Poprawiono jego wynik o <b>${oppDushaneImprovement.toFixed(2)}s</b> (z ${formatDiff(oppDiff)} na ${formatDiff(adjustedDiffOpp)})!`);
+          }
+          if (textParts.length > 0) {
+            infoDiv.innerHTML = textParts.join('<br>');
+            infoDiv.style.display = 'block';
+          } else {
+            infoDiv.style.display = 'none';
+          }
+        }
 
         if (winner === 'draw') {
           resultTitle.innerText = 'REMIS';
