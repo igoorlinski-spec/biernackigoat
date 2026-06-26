@@ -2144,9 +2144,16 @@
   <!-- Queue Screen Modal -->
   <div id="queue-screen" class="queue-overlay">
     <div class="queue-box">
-      <div class="spinner"></div>
+      <div class="spinner" id="queue-spinner"></div>
       <h3 id="queue-title-text">Poszukiwanie przeciwnika...</h3>
       <div class="queue-timer" id="queue-clock">00:00</div>
+      
+      <!-- Choices container for bot fallback -->
+      <div id="queue-bot-choices" style="display: none; margin-top: 15px; margin-bottom: 15px; gap: 10px; width: 100%; justify-content: center;">
+        <button class="mode-btn" onclick="acceptBotMatch()" style="background-color: #ff9800; border-color: #ff9800; color: #fff; padding: 8px 16px;">Graj na Bota</button>
+        <button class="mode-btn" onclick="continueSearching()" style="padding: 8px 16px;">Szukaj dalej</button>
+      </div>
+
       <button class="cancel-queue-btn" onclick="cancelQueue()">Anuluj wyszukiwanie</button>
     </div>
   </div>
@@ -2625,9 +2632,14 @@
     }
 
     // Matchmaking Queues
+    let botChoicePrompted = false;
+
     function joinQueue(mode) {
       queueMode = mode;
       queueSeconds = 0;
+      botChoicePrompted = false;
+      document.getElementById('queue-spinner').style.display = 'block';
+      document.getElementById('queue-bot-choices').style.display = 'none';
       document.getElementById('queue-clock').innerText = '00:00';
       document.getElementById('queue-title-text').innerText = mode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
       document.getElementById('queue-screen').style.display = 'flex';
@@ -2639,6 +2651,14 @@
         const mins = Math.floor(queueSeconds / 60).toString().padStart(2, '0');
         const secs = (queueSeconds % 60).toString().padStart(2, '0');
         document.getElementById('queue-clock').innerText = `${mins}:${secs}`;
+
+        // Prompt choices at 6 seconds
+        if (queueSeconds >= 6 && !botChoicePrompted) {
+          botChoicePrompted = true;
+          document.getElementById('queue-spinner').style.display = 'none';
+          document.getElementById('queue-bot-choices').style.display = 'flex';
+          document.getElementById('queue-title-text').innerText = 'Brak graczy online. Co chcesz zrobić?';
+        }
       }, 1000);
     }
 
@@ -2646,6 +2666,19 @@
       socket.emit('leave_queue', { mode: queueMode, nick: currentUser.nick });
       document.getElementById('queue-screen').style.display = 'none';
       clearInterval(queueInterval);
+    }
+
+    function acceptBotMatch() {
+      document.getElementById('queue-screen').style.display = 'none';
+      clearInterval(queueInterval);
+      socket.emit('force_bot_match', { mode: queueMode, nick: currentUser.nick, champion: currentUser.activeChampion, activeIcon: currentUser.activeIcon });
+    }
+
+    function continueSearching() {
+      botChoicePrompted = true; // prevent prompting again in the current queue session
+      document.getElementById('queue-spinner').style.display = 'block';
+      document.getElementById('queue-bot-choices').style.display = 'none';
+      document.getElementById('queue-title-text').innerText = queueMode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
     }
 
     // Practice Mode (Tryb Treningowy)

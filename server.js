@@ -784,58 +784,60 @@ io.on('connection', (socket) => {
     userIcons[nick] = activeIcon || 'default';
     if (!queues[mode].includes(nick)) queues[mode].push(nick);
     matchmake(mode);
+  });
 
-    // Automatic bot fallback after 6 seconds of searching alone
-    setTimeout(() => {
-      if (queues[mode] && queues[mode].includes(nick)) {
-        // Remove from normal queue
-        queues[mode] = queues[mode].filter(n => n !== nick);
+  socket.on('force_bot_match', ({ mode, nick, champion, activeIcon }) => {
+    playerNick = nick;
+    onlineUsers[nick] = socket.id;
+    userChampions[nick] = champion || 'Zygzak';
+    userIcons[nick] = activeIcon || 'default';
 
-        const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-        let botNick = 'Bot Ezreal', botChamp = 'Zygzak';
-        if (mode === 'ranked') {
-          const rand = Math.random();
-          if (rand < 0.33) {
-            botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
-          } else if (rand < 0.66) {
-            botNick = 'Bot Dushane'; botChamp = 'Dushane';
-          } else {
-            botNick = 'Bot Soprano'; botChamp = 'Tony Soprano';
-          }
-        } else {
-          // Draft mode
-          const rand = Math.random();
-          if (rand < 0.5) {
-            botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
-          } else {
-            botNick = 'Bot Dushane'; botChamp = 'Dushane';
-          }
-        }
-        userChampions[botNick] = botChamp;
+    // Remove from queue
+    queues[mode] = queues[mode].filter(n => n !== nick);
 
-        const game = {
-          id: gameId, mode, player1: nick, player2: botNick,
-          scores: { [nick]: 0, [botNick]: 0 }, round: 1, targetTime: 0,
-          roundInputs: {}, skillsUsed: { [nick]: false, [botNick]: false },
-          activeEffects: { [nick]: {}, [botNick]: {} }
-        };
-        activeGames[gameId] = game;
-
-        const s1 = onlineUsers[nick];
-        if (s1) {
-          io.to(s1).emit('match_found', { 
-            gameId, 
-            opponent: botNick, 
-            opponentChamp: botChamp, 
-            opponentIcon: 'default', 
-            yourIcon: userIcons[nick] || 'default', 
-            mode, 
-            role: 'player1' 
-          });
-          startNewRound(gameId);
-        }
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    let botNick = 'Bot Ezreal', botChamp = 'Zygzak';
+    if (mode === 'ranked') {
+      const rand = Math.random();
+      if (rand < 0.33) {
+        botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+      } else if (rand < 0.66) {
+        botNick = 'Bot Dushane'; botChamp = 'Dushane';
+      } else {
+        botNick = 'Bot Soprano'; botChamp = 'Tony Soprano';
       }
-    }, 6000);
+    } else {
+      // Draft mode
+      const rand = Math.random();
+      if (rand < 0.5) {
+        botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+      } else {
+        botNick = 'Bot Dushane'; botChamp = 'Dushane';
+      }
+    }
+    userChampions[botNick] = botChamp;
+
+    const game = {
+      id: gameId, mode, player1: nick, player2: botNick,
+      scores: { [nick]: 0, [botNick]: 0 }, round: 1, targetTime: 0,
+      roundInputs: {}, skillsUsed: { [nick]: false, [botNick]: false },
+      activeEffects: { [nick]: {}, [botNick]: {} }
+    };
+    activeGames[gameId] = game;
+
+    const s1 = onlineUsers[nick];
+    if (s1) {
+      io.to(s1).emit('match_found', { 
+        gameId, 
+        opponent: botNick, 
+        opponentChamp: botChamp, 
+        opponentIcon: 'default', 
+        yourIcon: userIcons[nick] || 'default', 
+        mode, 
+        role: 'player1' 
+      });
+      startNewRound(gameId);
+    }
   });
 
   socket.on('leave_queue', ({ mode, nick }) => {
