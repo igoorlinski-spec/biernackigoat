@@ -587,84 +587,93 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
   const loserNick = game.player1 === winnerNick ? game.player2 : game.player1;
   const scoreStr = `${game.scores[game.player1]}-${game.scores[game.player2]}`;
 
-  // Save to match history (only if not training against bot)
-  if (game.mode !== 'practice') {
-    db.run(
-      'INSERT INTO matches (player1, player2, winner, mode, score) VALUES (?, ?, ?, ?, ?)',
-      [game.player1, game.player2, winnerNick, game.mode, scoreStr]
-    );
+  // Save all matches to history (including practice mode)
+  db.run(
+    'INSERT INTO matches (player1, player2, winner, mode, score) VALUES (?, ?, ?, ?, ?)',
+    [game.player1, game.player2, winnerNick, game.mode, scoreStr],
+    function(err) {
+      if (err) {
+        console.error('Error inserting match history:', err);
+      }
 
-    // Update stats
-    if (game.mode === 'draft') {
-      const rewardW = game.scores[winnerNick] * 50 + 250;
-      const rewardL = game.scores[loserNick] * 50;
+      // Update statistics synchronously to avoid race conditions when clients fetch profile data
+      if (game.mode === 'draft') {
+        const rewardW = game.scores[winnerNick] * 50 + 250;
+        const rewardL = game.scores[loserNick] * 50;
 
-      db.serialize(() => {
-        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick]);
-        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick]);
-      });
+        db.serialize(() => {
+          db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardW, winnerNick], () => {
+            const sW = onlineUsers[winnerNick];
+            if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
+          });
+          db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick], () => {
+            const sL = onlineUsers[loserNick];
+            if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
+          });
+        });
 
-      const sW = onlineUsers[winnerNick];
-      const sL = onlineUsers[loserNick];
-      if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins` });
-      if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
+      } else if (game.mode === 'ranked') {
+        const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
+        const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
-    } else if (game.mode === 'ranked') {
-      const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
-      const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
-
-      db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
-        if (winUser) {
-          const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-          db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick]);
-          const sW = onlineUsers[winnerNick];
-          if (sW) {
-            io.to(sW).emit('game_over', {
-              winner: winnerNick,
-              lpChange: lpGain,
-              newRank: nextW.rank,
-              newLp: nextW.lp,
-              prevRank: winUser.rank,
-              prevLp: winUser.lp
+        db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
+          if (winUser) {
+            const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
+            db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
+              const sW = onlineUsers[winnerNick];
+              if (sW) {
+                io.to(sW).emit('game_over', {
+                  winner: winnerNick,
+                  lpChange: lpGain,
+                  newRank: nextW.rank,
+                  newLp: nextW.lp,
+                  prevRank: winUser.rank,
+                  prevLp: winUser.lp
+                });
+              }
             });
           }
-        }
-      });
+        });
 
-      db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
-        if (loseUser) {
-          const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-          db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick]);
-          const sL = onlineUsers[loserNick];
-          if (sL) {
-            io.to(sL).emit('game_over', {
-              winner: winnerNick,
-              lpChange: lpLoss,
-              newRank: nextL.rank,
-              newLp: nextL.lp,
-              prevRank: loseUser.rank,
-              prevLp: loseUser.lp
+        db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
+          if (loseUser) {
+            const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
+            db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
+              const sL = onlineUsers[loserNick];
+              if (sL) {
+                io.to(sL).emit('game_over', {
+                  winner: winnerNick,
+                  lpChange: lpLoss,
+                  newRank: nextL.rank,
+                  newLp: nextL.lp,
+                  prevRank: loseUser.rank,
+                  prevLp: loseUser.lp
+                });
+              }
             });
           }
-        }
-      });
-    }
-  } else {
-    // Practice Mode rewards (+50 coins for win, +10 for loss)
-    const humanPlayer = game.player1;
-    const isHumanWinner = winnerNick === humanPlayer;
-    const coinsReward = isHumanWinner ? 50 : 10;
+        });
 
-    db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [coinsReward, humanPlayer]);
+      } else if (game.mode === 'practice') {
+        // Practice Mode rewards (+50 coins for win, +10 for loss)
+        const humanPlayer = game.player1;
+        const isHumanWinner = winnerNick === humanPlayer;
+        const coinsReward = isHumanWinner ? 50 : 10;
 
-    const sHuman = onlineUsers[humanPlayer];
-    if (sHuman) {
-      io.to(sHuman).emit('game_over', {
-        winner: winnerNick,
-        reward: `+${coinsReward} Coins (Trening)`
-      });
+        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [coinsReward, humanPlayer], function(err) {
+          if (err) console.error(err);
+          
+          const sHuman = onlineUsers[humanPlayer];
+          if (sHuman) {
+            io.to(sHuman).emit('game_over', {
+              winner: winnerNick,
+              reward: `+${coinsReward} Coins (Trening)`
+            });
+          }
+        });
+      }
     }
-  }
+  );
 
   delete activeGames[gameId];
 }
