@@ -839,7 +839,7 @@ io.on('connection', (socket) => {
     matchmake(mode);
   });
 
-  socket.on('force_bot_match', ({ mode, nick, champion, activeIcon }) => {
+  socket.on('force_bot_match', async ({ mode, nick, champion, activeIcon }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
@@ -880,6 +880,9 @@ io.on('connection', (socket) => {
 
     const s1 = onlineUsers[nick];
     if (s1) {
+      const stats1 = await getMatchmakingStats(nick);
+      const stats2 = await getMatchmakingStats(botNick);
+
       io.to(s1).emit('match_found', { 
         gameId, 
         opponent: botNick, 
@@ -887,7 +890,9 @@ io.on('connection', (socket) => {
         opponentIcon: 'default', 
         yourIcon: userIcons[nick] || 'default', 
         mode, 
-        role: 'player1' 
+        role: 'player1',
+        yourStats: stats1,
+        opponentStats: stats2
       });
       startNewRound(gameId);
     }
@@ -897,7 +902,7 @@ io.on('connection', (socket) => {
     queues[mode] = queues[mode].filter(n => n !== nick);
   });
 
-  socket.on('start_practice', ({ nick, champion, difficulty, activeIcon }) => {
+  socket.on('start_practice', async ({ nick, champion, difficulty, activeIcon }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
@@ -918,7 +923,20 @@ io.on('connection', (socket) => {
     };
     activeGames[gameId] = game;
 
-    socket.emit('match_found', { gameId, opponent: botNick, opponentChamp: botChamp, mode: 'practice', role: 'player1' });
+    const stats1 = await getMatchmakingStats(nick);
+    const stats2 = await getMatchmakingStats(botNick);
+
+    socket.emit('match_found', { 
+      gameId, 
+      opponent: botNick, 
+      opponentChamp: botChamp, 
+      opponentIcon: 'default', 
+      yourIcon: userIcons[nick] || 'default', 
+      mode: 'practice', 
+      role: 'player1',
+      yourStats: stats1,
+      opponentStats: stats2
+    });
     startNewRound(gameId);
   });
 
@@ -997,7 +1015,65 @@ io.on('connection', (socket) => {
   });
 });
 
-function matchmake(mode) {
+async function getMatchmakingStats(nick) {
+  if (!nick) return { rank: 'Iron 4', winratio: '0%', badge: 'Brak' };
+  if (nick.startsWith('Bot')) {
+    let botRank = 'Bronze 1';
+    let botBadge = 'Brak';
+    if (nick === 'Bot Ezreal') { botRank = 'Bronze 3'; }
+    else if (nick === 'Bot Dushane') { botRank = 'Silver 1'; botBadge = 'Nowicjusz Blackjack 🎗️'; }
+    else if (nick === 'Bot Soprano') { botRank = 'Gold 1'; botBadge = 'Boss Blackjack 🏆'; }
+    return {
+      rank: botRank,
+      winratio: '50%',
+      badge: botBadge
+    };
+  }
+
+  try {
+    const result = await query(
+      'SELECT rank, blackjack_wins, perfect_timings FROM users WHERE nick = $1',
+      [nick]
+    );
+    if (result.rows.length === 0) return { rank: 'Iron 4', winratio: '0%', badge: 'Brak' };
+    const user = result.rows[0];
+
+    const rankedResult = await query(
+      "SELECT winner FROM matches WHERE (player1 = $1 OR player2 = $1) AND mode = 'ranked'",
+      [nick]
+    );
+    let rankedWins = 0;
+    let rankedTotal = rankedResult.rows.length;
+    rankedResult.rows.forEach(m => { if (m.winner === nick) rankedWins++; });
+
+    const winratio = rankedTotal > 0 ? `${Math.round((rankedWins / rankedTotal) * 100)}%` : '0%';
+
+    let badge = 'Brak';
+    const bjWins = user.blackjack_wins || 0;
+    const pt = user.perfect_timings || 0;
+
+    if (pt >= 40) {
+      badge = 'TIMI ⚡';
+    } else if (bjWins >= 100) {
+      badge = 'GOAT Blackjack 🐐';
+    } else if (bjWins >= 30) {
+      badge = 'Boss Blackjack 🏆';
+    } else if (bjWins >= 10) {
+      badge = 'Nowicjusz Blackjack 🎗️';
+    }
+
+    return {
+      rank: user.rank || 'Iron 4',
+      winratio,
+      badge
+    };
+  } catch (err) {
+    console.error('Error fetching stats for matchmaking:', err);
+    return { rank: 'Iron 4', winratio: '0%', badge: 'Brak' };
+  }
+}
+
+async function matchmake(mode) {
   queues[mode] = queues[mode].filter(nick => onlineUsers[nick] !== undefined);
   if (queues[mode].length >= 2) {
     const p1 = queues[mode].shift();
@@ -1013,8 +1089,31 @@ function matchmake(mode) {
 
     const s1 = onlineUsers[p1], s2 = onlineUsers[p2];
     if (s1 && s2) {
-      io.to(s1).emit('match_found', { gameId, opponent: p2, opponentChamp: userChampions[p2] || 'Zygzak', opponentIcon: userIcons[p2] || 'default', yourIcon: userIcons[p1] || 'default', mode, role: 'player1' });
-      io.to(s2).emit('match_found', { gameId, opponent: p1, opponentChamp: userChampions[p1] || 'Zygzak', opponentIcon: userIcons[p1] || 'default', yourIcon: userIcons[p2] || 'default', mode, role: 'player2' });
+      const stats1 = await getMatchmakingStats(p1);
+      const stats2 = await getMatchmakingStats(p2);
+
+      io.to(s1).emit('match_found', { 
+        gameId, 
+        opponent: p2, 
+        opponentChamp: userChampions[p2] || 'Zygzak', 
+        opponentIcon: userIcons[p2] || 'default', 
+        yourIcon: userIcons[p1] || 'default', 
+        mode, 
+        role: 'player1',
+        yourStats: stats1,
+        opponentStats: stats2
+      });
+      io.to(s2).emit('match_found', { 
+        gameId, 
+        opponent: p1, 
+        opponentChamp: userChampions[p1] || 'Zygzak', 
+        opponentIcon: userIcons[p1] || 'default', 
+        yourIcon: userIcons[p2] || 'default', 
+        mode, 
+        role: 'player2',
+        yourStats: stats2,
+        opponentStats: stats1
+      });
       startNewRound(gameId);
     } else {
       if (s1) queues[mode].unshift(p1);

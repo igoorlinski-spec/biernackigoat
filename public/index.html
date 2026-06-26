@@ -1730,6 +1730,7 @@
             </div>
             <div class="player-name" id="p1-name">Ty</div>
             <div class="player-champion" id="p1-champ">Postać: Zygzak</div>
+            <div class="player-extra-stats" id="p1-extra-stats" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; text-align: center;"></div>
           </div>
           <div class="player-score" id="p1-score">0</div>
         </div>
@@ -1788,6 +1789,7 @@
             </div>
             <div class="player-name" id="p2-name">Przeciwnik</div>
             <div class="player-champion" id="p2-champ">Postać: Zygzak</div>
+            <div class="player-extra-stats" id="p2-extra-stats" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; text-align: center;"></div>
           </div>
           <div class="player-score" id="p2-score">0</div>
         </div>
@@ -2530,7 +2532,7 @@
       socket = io();
       socket.emit('register_connection', { nick: currentUser.nick, activeIcon: currentUser.activeIcon });
 
-      socket.on('match_found', ({ gameId, opponent, opponentChamp, opponentIcon, yourIcon, mode, role }) => {
+      socket.on('match_found', ({ gameId, opponent, opponentChamp, opponentIcon, yourIcon, mode, role, yourStats, opponentStats }) => {
         currentGameId = gameId;
         currentRole = role;
         currentOpponent = opponent;
@@ -2569,6 +2571,21 @@
         document.getElementById('p1-champ').innerText = `Postać: ${currentUser.activeChampion}`;
         document.getElementById('p2-name').innerText = opponent;
         document.getElementById('p2-champ').innerText = `Postać: ${opponentChamp || 'Zygzak'}`;
+
+        // Setup player extra stats (Rank, Winratio, Badges)
+        const formatExtraStats = (stats) => {
+          if (!stats) return '';
+          let parts = [];
+          if (stats.rank) parts.push(`Ranga: <b style="color:var(--gold-primary);">${stats.rank}</b>`);
+          if (stats.winratio) parts.push(`Winratio: <b style="color:var(--cyan-primary);">${stats.winratio}</b>`);
+          if (stats.badge && stats.badge !== 'Brak') parts.push(`Odznaka: <b style="color:#ffd700;">${stats.badge}</b>`);
+          return parts.join(' | ');
+        };
+
+        const p1StatsEl = document.getElementById('p1-extra-stats');
+        const p2StatsEl = document.getElementById('p2-extra-stats');
+        if (p1StatsEl) p1StatsEl.innerHTML = formatExtraStats(yourStats);
+        if (p2StatsEl) p2StatsEl.innerHTML = formatExtraStats(opponentStats);
 
         const myChamp = champions.find(c => c.name === currentUser.activeChampion);
         const oppChamp = champions.find(c => c.name === opponentChamp);
