@@ -268,6 +268,22 @@ app.post('/api/buy-skill', (req, res) => {
   });
 });
 
+app.post('/api/claim-pharaoh-star', (req, res) => {
+  const { nick } = req.body;
+  if (!nick) return res.status(400).json({ error: 'Nick is required' });
+
+  db.get('SELECT stars FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const newStars = (user.stars || 0) + 1;
+    db.run('UPDATE users SET stars = ? WHERE nick = ?', [newStars, nick], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, stars: newStars });
+    });
+  });
+});
+
 // Real-time Game State
 const queues = {
   draft: [],
