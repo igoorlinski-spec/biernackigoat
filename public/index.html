@@ -992,10 +992,33 @@
 
     .profile-stats-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 15px;
       border-top: 1px solid rgba(200, 170, 110, 0.2);
       padding-top: 20px;
+    }
+
+    .profile-mini-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      object-fit: cover;
+    }
+    .profile-mini-icon.active {
+      border-color: var(--gold-primary);
+      box-shadow: 0 0 10px var(--gold-primary);
+    }
+    .profile-mini-icon:hover {
+      transform: scale(1.1);
+    }
+    .profile-avatar-large img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
     }
 
     .profile-stat-box {
@@ -1549,6 +1572,7 @@
         <div class="shop-tabs">
           <button id="shop-btn-champs" class="shop-tab-btn active" onclick="switchShopSubTab('champions')">Bohaterowie</button>
           <button id="shop-btn-skills" class="shop-tab-btn" onclick="switchShopSubTab('skills')">Umiejętności</button>
+          <button id="shop-btn-icons" class="shop-tab-btn" onclick="switchShopSubTab('icons')">Ikony</button>
         </div>
       </div>
       <div class="shop-grid" id="shop-items-container">
@@ -1561,7 +1585,7 @@
       <div class="profile-layout">
         <!-- Profile Card -->
         <div class="profile-card">
-          <div class="profile-avatar-large">
+          <div class="profile-avatar-large" id="prof-avatar-container">
             <i class="fa-solid fa-user-shield"></i>
           </div>
           <h2 class="profile-nick" id="prof-nick">Gracz</h2>
@@ -1576,6 +1600,18 @@
             <div class="profile-stat-box">
               <div class="profile-stat-num" id="prof-games">0</div>
               <div class="profile-stat-label">Rozegrane</div>
+            </div>
+            <div class="profile-stat-box">
+              <div class="profile-stat-num" id="prof-winratio">0%</div>
+              <div class="profile-stat-label">Winrate WR</div>
+            </div>
+          </div>
+          
+          <!-- Icon selector -->
+          <div class="icon-selector-section" style="margin-top: 25px; border-top: 1px solid rgba(200, 170, 110, 0.2); padding-top: 20px;">
+            <h4 style="color: var(--gold-primary); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 15px;">Wybierz ikonę profilu</h4>
+            <div class="icons-list" id="profile-unlocked-icons-list" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+              <!-- Unlocked icons will render here -->
             </div>
           </div>
         </div>
@@ -1745,6 +1781,15 @@
       }
     ];
 
+    // Available Icons data
+    const shopIcons = [
+      { name: 'okekel', displayName: 'Okekel', image: '/assets/images/okekel.png', cost: 100 },
+      { name: 'disco_adamus', displayName: 'Disco Adamus', image: '/assets/images/disco_adamus.png', cost: 100 },
+      { name: 'popek', displayName: 'Popek', image: '/assets/images/popek.png', cost: 100 },
+      { name: 'milosz_kulesza', displayName: 'Miłosz Kulesza', image: '/assets/images/milosz_kulesza.png', cost: 100 },
+      { name: 'mr_krycha', displayName: 'Mr Krycha', image: '/assets/images/mr_krycha.png', cost: 100 }
+    ];
+
     let activeShopSubTab = 'champions';
 
     // Check existing auth in localStorage
@@ -1818,7 +1863,11 @@
     }
 
     function updateUserUIElements() {
-      document.getElementById('player-tag').innerText = currentUser.nick;
+      let avatarHtml = `<i class="fa-solid fa-shield-halved" style="margin-right: 6px;"></i>`;
+      if (currentUser.activeIcon && currentUser.activeIcon !== 'default') {
+        avatarHtml = `<img src="/assets/images/${currentUser.activeIcon}.png" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle; border: 1px solid var(--gold-primary);">`;
+      }
+      document.getElementById('player-tag').innerHTML = `${avatarHtml}${currentUser.nick}`;
       document.getElementById('user-coins').innerText = currentUser.coins;
       document.getElementById('user-stars').innerText = currentUser.stars || 0;
       document.getElementById('user-rank-info').innerText = `${currentUser.rank} (${currentUser.lp} LP)`;
@@ -1826,14 +1875,35 @@
 
     function connectSocket() {
       socket = io();
-      socket.emit('register_connection', currentUser.nick);
+      socket.emit('register_connection', { nick: currentUser.nick, activeIcon: currentUser.activeIcon });
 
-      socket.on('match_found', ({ gameId, opponent, opponentChamp, mode, role }) => {
+      socket.on('match_found', ({ gameId, opponent, opponentChamp, opponentIcon, yourIcon, mode, role }) => {
         currentGameId = gameId;
         currentRole = role;
         currentOpponent = opponent;
         skillUsedInMatch = false;
         extraSkillUsedInMatch = false;
+
+        // Set up in-game avatars
+        const p1Avatar = document.getElementById('p1-avatar');
+        const p2Avatar = document.getElementById('p2-avatar');
+        
+        if (p1Avatar) {
+          const userIcon = role === 'player1' ? yourIcon : opponentIcon;
+          if (userIcon && userIcon !== 'default') {
+            p1Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+          } else {
+            p1Avatar.innerHTML = `<i class="fa-solid fa-shield-halved"></i>`;
+          }
+        }
+        if (p2Avatar) {
+          const userIcon = role === 'player2' ? yourIcon : opponentIcon;
+          if (userIcon && userIcon !== 'default') {
+            p2Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+          } else {
+            p2Avatar.innerHTML = `<i class="fa-solid fa-shield-halved"></i>`;
+          }
+        }
 
         document.getElementById('queue-screen').style.display = 'none';
         clearInterval(queueInterval);
@@ -2011,7 +2081,7 @@
       document.getElementById('queue-title-text').innerText = mode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
       document.getElementById('queue-screen').style.display = 'flex';
 
-      socket.emit('join_queue', { mode, nick: currentUser.nick, champion: currentUser.activeChampion });
+      socket.emit('join_queue', { mode, nick: currentUser.nick, champion: currentUser.activeChampion, activeIcon: currentUser.activeIcon });
 
       queueInterval = setInterval(() => {
         queueSeconds++;
@@ -2033,7 +2103,8 @@
       socket.emit('start_practice', { 
         nick: currentUser.nick, 
         champion: currentUser.activeChampion,
-        difficulty: difficulty 
+        difficulty: difficulty,
+        activeIcon: currentUser.activeIcon
       });
     }
 
@@ -2223,17 +2294,22 @@
       
       const champsBtn = document.getElementById('shop-btn-champs');
       const skillsBtn = document.getElementById('shop-btn-skills');
+      const iconsBtn = document.getElementById('shop-btn-icons');
       if (champsBtn) champsBtn.classList.toggle('active', subTab === 'champions');
       if (skillsBtn) skillsBtn.classList.toggle('active', subTab === 'skills');
+      if (iconsBtn) iconsBtn.classList.toggle('active', subTab === 'icons');
       
       const title = document.getElementById('shop-title-text');
       const desc = document.getElementById('shop-desc-text');
       if (subTab === 'champions') {
         if (title) title.innerText = 'Sklep bohaterów';
         if (desc) desc.innerText = 'Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!';
-      } else {
+      } else if (subTab === 'skills') {
         if (title) title.innerText = 'Sklep umiejętności';
         if (desc) desc.innerText = 'Kupuj specjalne umiejętności za gwiazdy zdobyte w wydarzeniach specjalnych!';
+      } else if (subTab === 'icons') {
+        if (title) title.innerText = 'Sklep ikon profilu';
+        if (desc) desc.innerText = 'Kupuj unikalne ikony profilowe za monety (każda ikona kosztuje 100 monet)!';
       }
       
       renderShop();
@@ -2275,7 +2351,7 @@
             </div>
           `;
         });
-      } else {
+      } else if (activeShopSubTab === 'skills') {
         shopSkills.forEach(skill => {
           const isUnlocked = currentUser && currentUser.unlocked_skills && currentUser.unlocked_skills.includes(skill.name);
           
@@ -2301,6 +2377,37 @@
                   <i class="fa-solid fa-star"></i> ${skill.cost} Gwiazd
                 </div>
                 <p class="champ-skill-desc">${skill.desc}</p>
+              </div>
+              ${btnHtml}
+            </div>
+          `;
+        });
+      } else if (activeShopSubTab === 'icons') {
+        shopIcons.forEach(icon => {
+          const isUnlocked = currentUser && currentUser.unlocked_icons && currentUser.unlocked_icons.includes(icon.name);
+          const isActive = currentUser && currentUser.activeIcon === icon.name;
+          
+          let btnHtml = '';
+          if (isActive) {
+            btnHtml = `<button class="buy-btn active-champ" style="border-color: var(--gold-primary); color: var(--gold-primary);">Wybrana</button>`;
+          } else if (isUnlocked) {
+            btnHtml = `<button class="buy-btn unlocked" onclick="selectIcon('${icon.name}')">Ustaw</button>`;
+          } else {
+            const canAfford = currentUser && currentUser.coins >= icon.cost;
+            btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyIcon('${icon.name}', ${icon.cost})">Kup za Monety</button>`;
+          }
+
+          container.innerHTML += `
+            <div class="shop-card">
+              <div>
+                <div class="shop-card-icon" style="border-radius: 50%; overflow: hidden; border-width: 2px;">
+                  <img src="${icon.image}" style="border-radius: 50%; object-fit: cover;">
+                </div>
+                <h3>${icon.displayName}</h3>
+                <div class="champ-price">
+                  <i class="fa-solid fa-coins"></i> ${icon.cost} Monet
+                </div>
+                <p class="champ-skill-desc">Unikalna ikona profilowa przedstawiająca: ${icon.displayName}.</p>
               </div>
               ${btnHtml}
             </div>
@@ -2382,6 +2489,59 @@
         }
       } catch (err) {
         showToast('Błąd wyboru postaci');
+      }
+    }
+
+    async function buyIcon(iconName, cost) {
+      if (!currentUser) return;
+      if (currentUser.coins < cost) {
+        showToast('Masz za mało monet!');
+        return;
+      }
+      try {
+        const response = await fetch('/api/buy-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, iconName, cost })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          currentUser.coins = data.coins;
+          currentUser.unlocked_icons = data.unlocked_icons;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          showToast('Kupiono ikonę profilu!');
+          renderShop();
+        } else {
+          showToast('Błąd: ' + data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
+    }
+
+    async function selectIcon(iconName) {
+      if (!currentUser) return;
+      try {
+        const response = await fetch('/api/select-icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, iconName })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          currentUser.activeIcon = iconName;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          showToast('Zmieniono ikonę profilu!');
+          fetchUserData(); // Refresh profile UI
+        } else {
+          showToast('Błąd: ' + data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd sieci.');
       }
     }
 
@@ -2478,8 +2638,20 @@
           currentUser.rank = data.rank;
           currentUser.stars = data.stars || 0;
           currentUser.unlocked_characters = data.unlocked_characters;
+          currentUser.unlocked_icons = data.unlocked_icons;
+          currentUser.activeIcon = data.activeIcon;
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
+
+          // Set large profile avatar
+          const avatarContainer = document.getElementById('prof-avatar-container');
+          if (avatarContainer) {
+            if (data.activeIcon && data.activeIcon !== 'default') {
+              avatarContainer.innerHTML = `<img src="/assets/images/${data.activeIcon}.png">`;
+            } else {
+              avatarContainer.innerHTML = `<i class="fa-solid fa-user-shield"></i>`;
+            }
+          }
 
           // Fill Profile tab elements
           document.getElementById('prof-nick').innerText = data.nick;
@@ -2487,6 +2659,48 @@
           document.getElementById('prof-lp').innerText = `${data.lp} LP`;
           document.getElementById('prof-coins').innerText = data.coins;
           document.getElementById('prof-games').innerText = data.history.length;
+
+          // Winratio
+          const winratioEl = document.getElementById('prof-winratio');
+          if (winratioEl) {
+            if (data.rankedTotal && data.rankedTotal > 0) {
+              const percentage = Math.round((data.rankedWins / data.rankedTotal) * 100);
+              winratioEl.innerText = `${percentage}%`;
+            } else {
+              winratioEl.innerText = '0%';
+            }
+          }
+
+          // Render unlocked icons selector
+          const iconsListContainer = document.getElementById('profile-unlocked-icons-list');
+          if (iconsListContainer) {
+            iconsListContainer.innerHTML = '';
+            
+            // Always allow default
+            const isDefaultActive = !data.activeIcon || data.activeIcon === 'default';
+            iconsListContainer.innerHTML += `
+              <div class="profile-mini-icon-wrapper" style="position: relative; cursor: pointer;" onclick="selectIcon('default')">
+                <div class="profile-mini-icon ${isDefaultActive ? 'active' : ''}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid ${isDefaultActive ? 'var(--gold-primary)' : 'var(--text-muted)'}; display: flex; justify-content: center; align-items: center; background: #000; box-shadow: ${isDefaultActive ? '0 0 10px var(--gold-primary)' : 'none'};">
+                  <i class="fa-solid fa-user-shield" style="color: ${isDefaultActive ? 'var(--gold-primary)' : 'var(--text-muted)'};"></i>
+                </div>
+              </div>
+            `;
+
+            const unlockedIcons = data.unlocked_icons || [];
+            unlockedIcons.forEach(iconName => {
+              const iconData = shopIcons.find(i => i.name === iconName);
+              if (iconData) {
+                const isActive = data.activeIcon === iconName;
+                iconsListContainer.innerHTML += `
+                  <img class="profile-mini-icon ${isActive ? 'active' : ''}" 
+                       src="${iconData.image}" 
+                       alt="${iconData.displayName}" 
+                       style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid ${isActive ? 'var(--gold-primary)' : 'var(--text-muted)'}; cursor: pointer; transition: all 0.2s ease; object-fit: cover; box-shadow: ${isActive ? '0 0 10px var(--gold-primary)' : 'none'};" 
+                       onclick="selectIcon('${iconName}')">
+                `;
+              }
+            });
+          }
 
           // History list
           const list = document.getElementById('prof-history-list');
@@ -2529,10 +2743,14 @@
           tbody.innerHTML = '';
           
           data.forEach((row, index) => {
+            let avatarHtml = `<i class="fa-solid fa-user-shield" style="margin-right: 8px; color: var(--gold-primary);"></i>`;
+            if (row.active_icon && row.active_icon !== 'default') {
+              avatarHtml = `<img src="/assets/images/${row.active_icon}.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px; vertical-align: middle; border: 1px solid var(--gold-primary);">`;
+            }
             tbody.innerHTML += `
               <tr>
                 <td class="rank-cell">#${index + 1}</td>
-                <td>${row.nick}</td>
+                <td>${avatarHtml}${row.nick}</td>
                 <td>${row.rank}</td>
                 <td class="lp-cell">${row.lp} LP</td>
                 <td style="color: var(--cyan-primary); font-weight: 600;">${row.active_champion || 'Zygzak'}</td>

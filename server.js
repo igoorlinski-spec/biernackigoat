@@ -42,7 +42,9 @@ function initializeDatabase() {
         unlocked_characters TEXT DEFAULT 'Zygzak',
         stars INTEGER DEFAULT 0,
         unlocked_skills TEXT DEFAULT '',
-        active_champion TEXT DEFAULT 'Zygzak'
+        active_champion TEXT DEFAULT 'Zygzak',
+        unlocked_icons TEXT DEFAULT '',
+        active_icon TEXT DEFAULT 'default'
       )
     `);
 
@@ -61,6 +63,16 @@ function initializeDatabase() {
       // Ignore if column already exists
     });
 
+    // Ensure unlocked_icons column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN unlocked_icons TEXT DEFAULT ''`, (err) => {
+      // Ignore if column already exists
+    });
+
+    // Ensure active_icon column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN active_icon TEXT DEFAULT 'default'`, (err) => {
+      // Ignore if column already exists
+    });
+
     db.run(`
       CREATE TABLE IF NOT EXISTS matches (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,11 +84,6 @@ function initializeDatabase() {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    // Reset all users' coins and stars to 0 to clean up older testing accounts
-    db.run(`UPDATE users SET coins = 0, stars = 0`, (err) => {
-      if (err) console.error('Error resetting user coins/stars to 0:', err);
-    });
   });
 }
 
@@ -183,7 +190,9 @@ app.post('/api/login', (req, res) => {
         stars: user.stars || 0,
         unlocked_characters: user.unlocked_characters.split(','),
         unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
-        activeChampion: user.active_champion || 'Zygzak'
+        activeChampion: user.active_champion || 'Zygzak',
+        unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
+        activeIcon: user.active_icon || 'default'
       });
     });
   });
@@ -191,35 +200,103 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/profile/:nick', (req, res) => {
   const { nick } = req.params;
-  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion FROM users WHERE nick = ?', [nick], (err, user) => {
+  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon FROM users WHERE nick = ?', [nick], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'Player not found' });
 
+    // Calculate ranked winrate
     db.all(
-      'SELECT * FROM matches WHERE player1 = ? OR player2 = ? ORDER BY timestamp DESC LIMIT 10',
+      'SELECT winner, mode FROM matches WHERE (player1 = ? OR player2 = ?) AND mode = \'ranked\'',
       [nick, nick],
-      (err, matches) => {
+      (err, rankedMatches) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({
-          nick: user.nick,
-          coins: user.coins,
-          lp: user.lp,
-          rank: user.rank,
-          stars: user.stars || 0,
-          unlocked_characters: user.unlocked_characters.split(','),
-          unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
-          activeChampion: user.active_champion || 'Zygzak',
-          history: matches
+
+        let rankedWins = 0;
+        let rankedTotal = rankedMatches.length;
+        rankedMatches.forEach(m => {
+          if (m.winner === nick) rankedWins++;
         });
+
+        db.all(
+          'SELECT * FROM matches WHERE player1 = ? OR player2 = ? ORDER BY timestamp DESC LIMIT 10',
+          [nick, nick],
+          (err, matches) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({
+              nick: user.nick,
+              coins: user.coins,
+              lp: user.lp,
+              rank: user.rank,
+              stars: user.stars || 0,
+              unlocked_characters: user.unlocked_characters.split(','),
+              unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
+              activeChampion: user.active_champion || 'Zygzak',
+              unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
+              activeIcon: user.active_icon || 'default',
+              rankedWins,
+              rankedTotal,
+              history: matches
+            });
+          }
+        );
       }
     );
   });
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  db.all('SELECT nick, lp, rank, coins, stars, active_champion FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100', [], (err, rows) => {
+  db.all('SELECT nick, lp, rank, coins, stars, active_champion, active_icon FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
+  });
+});
+
+app.post('/api/buy-icon', (req, res) => {
+  const { nick, iconName, cost } = req.body;
+  db.get('SELECT coins, unlocked_icons FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    if (icons.includes(iconName)) {
+      return res.status(400).json({ error: 'Already unlocked' });
+    }
+    if (user.coins < cost) {
+      return res.status(400).json({ error: 'Not enough coins' });
+    }
+
+    icons.push(iconName);
+    const newCoins = user.coins - cost;
+    const newIconsStr = icons.join(',');
+
+    db.run(
+      'UPDATE users SET coins = ?, unlocked_icons = ? WHERE nick = ?',
+      [newCoins, newIconsStr, nick],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ coins: newCoins, unlocked_icons: icons });
+      }
+    );
+  });
+});
+
+app.post('/api/select-icon', (req, res) => {
+  const { nick, iconName } = req.body;
+  if (!nick || !iconName) return res.status(400).json({ error: 'Nick and iconName are required' });
+
+  db.get('SELECT unlocked_icons FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    if (iconName !== 'default' && !icons.includes(iconName)) {
+      return res.status(400).json({ error: 'Icon not unlocked' });
+    }
+
+    db.run('UPDATE users SET active_icon = ? WHERE nick = ?', [iconName, nick], function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, activeIcon: iconName });
+    });
   });
 });
 
@@ -315,22 +392,25 @@ const queues = {
 
 const onlineUsers = {}; // Map nick -> socket.id
 const userChampions = {}; // Map nick -> active champion name
+const userIcons = {}; // Map nick -> active icon name
 const activeGames = {};
 
 io.on('connection', (socket) => {
   let playerNick = null;
 
-  socket.on('register_connection', (nick) => {
+  socket.on('register_connection', ({ nick, activeIcon }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
+    userIcons[nick] = activeIcon || 'default';
     socket.join(nick);
     console.log(`Player ${nick} connected via WebSocket. Socket ID: ${socket.id}`);
   });
 
-  socket.on('join_queue', ({ mode, nick, champion }) => {
+  socket.on('join_queue', ({ mode, nick, champion, activeIcon }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
+    userIcons[nick] = activeIcon || 'default';
 
     if (!queues[mode].includes(nick)) {
       queues[mode].push(nick);
@@ -347,10 +427,11 @@ io.on('connection', (socket) => {
   });
 
   // Practice Mode (Tryb Treningowy)
-  socket.on('start_practice', ({ nick, champion, difficulty }) => {
+  socket.on('start_practice', ({ nick, champion, difficulty, activeIcon }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
+    userIcons[nick] = activeIcon || 'default';
 
     const gameId = `practice_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     
@@ -567,6 +648,8 @@ function matchmake(mode) {
         gameId, 
         opponent: p2, 
         opponentChamp: userChampions[p2] || 'Zygzak',
+        opponentIcon: userIcons[p2] || 'default',
+        yourIcon: userIcons[p1] || 'default',
         mode, 
         role: 'player1' 
       });
@@ -574,6 +657,8 @@ function matchmake(mode) {
         gameId, 
         opponent: p1, 
         opponentChamp: userChampions[p1] || 'Zygzak',
+        opponentIcon: userIcons[p1] || 'default',
+        yourIcon: userIcons[p2] || 'default',
         mode, 
         role: 'player2' 
       });
