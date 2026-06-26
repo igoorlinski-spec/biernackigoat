@@ -20,7 +20,8 @@ const deps = {
   'cors': '2.8.5',
   'bcryptjs': '2.4.3',
   'socket.io': '4.7.5',
-  'sqlite3': '5.1.7'
+  'sqlite3': '5.1.7',
+  'pg': '8.11.3'
 };
 
 // Helper to download file

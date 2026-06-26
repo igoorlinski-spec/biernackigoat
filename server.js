@@ -25,16 +25,63 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// Helper: run a query
-const query = (text, params) => pool.query(text, params);
+let isPostgres = true;
+let sqliteDb = null;
 
-// Test DB connection on startup
+// Helper: run a query
+let query = (text, params) => pool.query(text, params);
+
+// Test DB connection on startup and setup fallback if it fails
 pool.connect((err, client, release) => {
   if (err) {
     console.error('!!! DATABASE CONNECTION FAILED:', err.message);
+    console.log('Falling back to local SQLite...');
+    isPostgres = false;
+    
+    // Setup SQLite
+    const { Database } = require('./db_adapter');
+    sqliteDb = new Database(path.join(__dirname, 'database.sqlite'));
+    
+    // Override the query helper
+    query = (text, params) => {
+      let sql = text;
+      const values = params || [];
+      // Translate $1, $2, ... to ?
+      sql = sql.replace(/\$(\d+)/g, '?');
+      
+      // Map SERIAL to INTEGER PRIMARY KEY AUTOINCREMENT
+      sql = sql.replace(/\bSERIAL PRIMARY KEY\b/gi, 'INTEGER PRIMARY KEY AUTOINCREMENT');
+      
+      return new Promise((resolve, reject) => {
+        const isSelect = sql.trim().toUpperCase().startsWith('SELECT');
+        if (isSelect) {
+          sqliteDb.all(sql, values, (err, rows) => {
+            if (err) reject(err);
+            else resolve({ rows: rows || [] });
+          });
+        } else {
+          sqliteDb.run(sql, values, function(err) {
+            if (err) {
+              if (sql.toUpperCase().includes('ADD COLUMN') && (err.message.includes('duplicate column name') || err.message.includes('already exists'))) {
+                // Column already exists, ignore
+                resolve({ rows: [], changes: 0 });
+              } else {
+                reject(err);
+              }
+            } else {
+              resolve({ rows: [], lastID: this?.lastID, changes: this?.changes });
+            }
+          });
+        }
+      });
+    };
+    
+    // Run initialization
+    initializeDatabase();
   } else {
     console.log('Database connected successfully.');
     release();
+    initializeDatabase();
   }
 });
 
@@ -64,9 +111,15 @@ async function initializeDatabase() {
     `);
 
     // Add new columns to existing tables if they don't exist
-    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS casino_xp INTEGER DEFAULT 0`);
-    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blackjack_wins INTEGER DEFAULT 0`);
-    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS perfect_timings INTEGER DEFAULT 0`);
+    try {
+      await query(`ALTER TABLE users ADD COLUMN casino_xp INTEGER DEFAULT 0`);
+    } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN blackjack_wins INTEGER DEFAULT 0`);
+    } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN perfect_timings INTEGER DEFAULT 0`);
+    } catch(e) {}
 
     await query(`
       CREATE TABLE IF NOT EXISTS matches (
@@ -85,8 +138,6 @@ async function initializeDatabase() {
     console.error('Database initialization error:', err);
   }
 }
-
-initializeDatabase();
 
 // Ranks hierarchy
 const RANKS = [
