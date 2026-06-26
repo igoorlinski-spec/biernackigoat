@@ -1850,7 +1850,7 @@
         document.getElementById('res-target').innerText = `${target.toFixed(2)}s`;
         
         const formatDiff = (val) => {
-          return (val >= 0 ? '+' : '') + val.toFixed(3) + 's';
+          return (val >= 0 ? '+' : '') + val.toFixed(2) + 's';
         };
 
         document.getElementById('res-your-diff').innerText = formatDiff(yourDiff);
@@ -2081,8 +2081,8 @@
         const yourTimeDisplay = document.getElementById('pharaoh-your-time');
         const yourDiffDisplay = document.getElementById('pharaoh-your-diff');
 
-        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(3) + 's';
-        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(3) + 's';
+        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(2) + 's';
+        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2) + 's';
 
         if (isIdeal) {
           if (resultTitle) {
@@ -2341,7 +2341,7 @@
       // Update Pharaoh display count
       const pharaohCounter = document.getElementById('pharaoh-counter');
       if (pharaohCounter) {
-        pharaohCounter.innerText = currentElapsed.toFixed(3) + 's';
+        pharaohCounter.innerText = currentElapsed.toFixed(2) + 's';
       }
       
       // Show overlay
