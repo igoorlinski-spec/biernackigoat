@@ -2395,7 +2395,7 @@
                 <div class="history-item ${itemClass}">
                   <div class="history-item-left">
                     <span class="history-opp">vs ${opponent}</span>
-                    <span class="history-mode">${match.mode === 'ranked' ? 'Ranked' : 'Draft'}</span>
+                    <span class="history-mode">${match.mode === 'ranked' ? 'Ranked' : (match.mode === 'practice' ? 'Trening' : 'Draft')}</span>
                   </div>
                   <span class="history-score">${match.score}</span>
                 </div>

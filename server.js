@@ -204,7 +204,7 @@ app.get('/api/profile/:nick', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  db.all('SELECT nick, lp, rank, coins, stars FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 20', [], (err, rows) => {
+  db.all('SELECT nick, lp, rank, coins, stars FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -391,6 +391,9 @@ io.on('connection', (socket) => {
       }
       if (game.activeEffects[bot].shake) {
         botError += (botError >= 0 ? 0.30 : -0.30);
+      }
+      if (game.activeEffects[bot].speedup) {
+        botError = botError * 2.0;
       }
 
       game.roundInputs[bot] = parseFloat(botError.toFixed(4));
