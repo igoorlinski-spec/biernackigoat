@@ -1554,8 +1554,8 @@
         <i class="fa-solid fa-star" style="color: #ffd700; text-shadow: 0 0 5px #ffd700;"></i>
         <span id="user-stars">0</span>
       </div>
-      <div class="stat-badge lp">
-        <i class="fa-solid fa-trophy"></i>
+      <div class="stat-badge lp" style="display: flex; align-items: center; gap: 5px;">
+        <img id="user-rank-icon-img" src="/assets/images/ranks/iron.png" style="width: 18px; height: 18px; object-fit: contain;">
         <span id="user-rank-info">Iron 4 (0 LP)</span>
       </div>
       <button class="logout-btn" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -2080,6 +2080,9 @@
             <i class="fa-solid fa-user-shield"></i>
           </div>
           <h2 class="profile-nick" id="prof-nick">Gracz</h2>
+          <div style="margin: 10px auto; width: 65px; height: 65px; display: flex; justify-content: center; align-items: center;">
+            <img id="prof-rank-icon" src="/assets/images/ranks/iron.png" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+          </div>
           <div class="profile-rank" id="prof-rank">Iron 4</div>
           <div class="profile-lp" id="prof-lp">0 LP</div>
           
@@ -2284,14 +2287,18 @@
       <h3 class="rank-modal-title" id="rank-anim-title">Awans!</h3>
       <div class="rank-comparison">
         <div class="rank-display">
-          <div class="rank-display-icon"><i class="fa-solid fa-award"></i></div>
+          <div class="rank-display-icon" style="border: none; background: none; box-shadow: none; display: flex; justify-content: center; align-items: center; width: 60px; height: 60px;">
+            <img id="rank-anim-prev-icon" src="/assets/images/ranks/iron.png" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+          </div>
           <div class="rank-display-name" id="rank-anim-prev">Iron 4</div>
         </div>
         <div class="rank-arrow">
           <i class="fa-solid fa-angles-right"></i>
         </div>
         <div class="rank-display">
-          <div class="rank-display-icon" style="color: var(--cyan-primary); text-shadow: 0 0 10px var(--cyan-primary);"><i class="fa-solid fa-crown"></i></div>
+          <div class="rank-display-icon" style="border: none; background: none; box-shadow: none; display: flex; justify-content: center; align-items: center; width: 60px; height: 60px;">
+            <img id="rank-anim-new-icon" src="/assets/images/ranks/iron.png" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+          </div>
           <div class="rank-display-name" id="rank-anim-new" style="color: var(--cyan-primary);">Iron 3</div>
         </div>
       </div>
@@ -2315,6 +2322,22 @@
     // State management
     let socket = null;
     let currentUser = null;
+
+    function getRankIconPath(rankName) {
+      if (!rankName) return '/assets/images/ranks/iron.png';
+      const nameLower = rankName.toLowerCase();
+      if (nameLower.includes('iron')) return '/assets/images/ranks/iron.png';
+      if (nameLower.includes('bronze')) return '/assets/images/ranks/bronze.png';
+      if (nameLower.includes('silver')) return '/assets/images/ranks/silver.png';
+      if (nameLower.includes('gold')) return '/assets/images/ranks/gold.png';
+      if (nameLower.includes('platinum')) return '/assets/images/ranks/platinum.png';
+      if (nameLower.includes('emerald')) return '/assets/images/ranks/emerald.png';
+      if (nameLower.includes('diamond')) return '/assets/images/ranks/diamond.png';
+      if (nameLower.includes('grandmaster')) return '/assets/images/ranks/grandmaster.png';
+      if (nameLower.includes('challenger')) return '/assets/images/ranks/challenger.png';
+      if (nameLower.includes('master')) return '/assets/images/ranks/master.png';
+      return '/assets/images/ranks/iron.png';
+    }
     let isRegisterMode = false;
     let activeTab = 'lobby';
     let queueMode = null;
@@ -2526,6 +2549,7 @@
       document.getElementById('user-coins').innerText = currentUser.coins;
       document.getElementById('user-stars').innerText = currentUser.stars || 0;
       document.getElementById('user-rank-info').innerText = `${currentUser.rank} (${currentUser.lp} LP)`;
+      document.getElementById('user-rank-icon-img').src = getRankIconPath(currentUser.rank);
     }
 
     function connectSocket() {
@@ -3806,6 +3830,7 @@
           // Fill Profile tab elements
           document.getElementById('prof-nick').innerText = data.nick;
           document.getElementById('prof-rank').innerText = data.rank;
+          document.getElementById('prof-rank-icon').src = getRankIconPath(data.rank);
           document.getElementById('prof-lp').innerText = `${data.lp} LP`;
           document.getElementById('prof-coins').innerText = data.coins;
           document.getElementById('prof-games').innerText = data.history.length;
@@ -3923,11 +3948,14 @@
             if (pt >= 40) badgeHtml += `<span title="TIMI - Ultra" style="font-size:1rem; animation:badge-pulse 1.5s infinite; filter:drop-shadow(0 0 8px #bf5fff);">&#9889;</span>`;
             if (!badgeHtml) badgeHtml = '<span style="color:#444">-</span>';
 
+            const rankIconUrl = getRankIconPath(row.rank);
+            const rankHtml = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;"><img src="${rankIconUrl}" style="width: 20px; height: 20px; object-fit: contain;"><span>${row.rank}</span></div>`;
+
             tbody.innerHTML += `
               <tr>
                 <td class="rank-cell">#${index + 1}</td>
                 <td>${avatarHtml}${row.nick}</td>
-                <td>${row.rank}</td>
+                <td>${rankHtml}</td>
                 <td class="lp-cell">${row.lp} LP</td>
                 <td style="color: var(--cyan-primary); font-weight: 600;">${row.active_champion || 'Zygzak'}</td>
                 <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
@@ -3952,6 +3980,9 @@
 
       prevDisplay.innerText = `${prevRank} (${prevLp} LP)`;
       newDisplay.innerText = `${newRank} (${newLp} LP)`;
+
+      document.getElementById('rank-anim-prev-icon').src = getRankIconPath(prevRank);
+      document.getElementById('rank-anim-new-icon').src = getRankIconPath(newRank);
       
       const changeText = lpChange >= 0 ? `+${lpChange} LP` : `${lpChange} LP`;
       lpDetail.innerText = `Różnica punktów: ${changeText}`;
