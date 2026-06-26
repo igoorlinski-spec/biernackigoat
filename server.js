@@ -849,29 +849,29 @@ io.on('connection', (socket) => {
     queues[mode] = queues[mode].filter(n => n !== nick);
 
     const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    let botNick = 'Bot Ezreal', botChamp = 'Zygzak';
+    let botNick = 'Bot Ezreal', botChamp = 'Zygzak', botDiff = 'easy';
     if (mode === 'ranked') {
       const rand = Math.random();
       if (rand < 0.33) {
-        botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+        botNick = 'Bot Ezreal'; botChamp = 'Zygzak'; botDiff = 'easy';
       } else if (rand < 0.66) {
-        botNick = 'Bot Dushane'; botChamp = 'Dushane';
+        botNick = 'Bot Dushane'; botChamp = 'Dushane'; botDiff = 'medium';
       } else {
-        botNick = 'Bot Soprano'; botChamp = 'Tony Soprano';
+        botNick = 'Bot Soprano'; botChamp = 'Tony Soprano'; botDiff = 'hard';
       }
     } else {
       // Draft mode
       const rand = Math.random();
       if (rand < 0.5) {
-        botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+        botNick = 'Bot Ezreal'; botChamp = 'Zygzak'; botDiff = 'easy';
       } else {
-        botNick = 'Bot Dushane'; botChamp = 'Dushane';
+        botNick = 'Bot Dushane'; botChamp = 'Dushane'; botDiff = 'medium';
       }
     }
     userChampions[botNick] = botChamp;
 
     const game = {
-      id: gameId, mode, player1: nick, player2: botNick,
+      id: gameId, mode, player1: nick, player2: botNick, difficulty: botDiff,
       scores: { [nick]: 0, [botNick]: 0 }, round: 1, targetTime: 0,
       roundInputs: {}, skillsUsed: { [nick]: false, [botNick]: false },
       activeEffects: { [nick]: {}, [botNick]: {} }
@@ -958,7 +958,7 @@ io.on('connection', (socket) => {
       let botError = 0;
       if (game.difficulty === 'easy') { botError = (Math.random() * 2.4 - 1.2); if (Math.random() < 0.35) botError += (Math.random() * 2.0 - 1.0); }
       else if (game.difficulty === 'medium') { botError = (Math.random() * 1.0 - 0.5); if (Math.random() < 0.2) botError += (Math.random() * 0.8 - 0.4); }
-      else if (game.difficulty === 'hard') { botError = (Math.random() * 0.4 - 0.2); if (Math.random() < 0.1) botError += (Math.random() * 0.3 - 0.15); }
+      else if (game.difficulty === 'hard') { botError = (Math.random() * 0.55 - 0.50); }
 
       if (game.activeEffects[bot].tony) botError += (botError >= 0 ? 1.00 : -1.00);
       if (game.activeEffects[bot].shake) botError += (botError >= 0 ? 0.30 : -0.30);
