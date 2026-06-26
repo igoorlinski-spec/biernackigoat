@@ -3427,7 +3427,7 @@
       {
         name: 'Piramida',
         character: 'Zygzak',
-        cost: 25,
+        cost: 10,
         image: '/assets/images/pharaoh.png',
         desc: 'Specjalna umiejętność do postaci Zygzak pod przyciskiem [N]. Gracz posiadający ją na koncie może raz na grę kliknąć [N], co na 0,5 sekundy odsłoni licznik na tle wielkiego Faraona.'
       }
@@ -4358,8 +4358,8 @@
         const yourTimeDisplay = document.getElementById('pharaoh-your-time');
         const yourDiffDisplay = document.getElementById('pharaoh-your-diff');
 
-        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(3) + 's';
-        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(3) + 's';
+        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(2) + 's';
+        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2) + 's';
 
         if (isIdeal) {
           playPharaohSuccessSound();
