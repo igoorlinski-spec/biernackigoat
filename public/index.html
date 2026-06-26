@@ -48,6 +48,15 @@
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    transition: background 0.6s ease-in-out, background-color 0.6s ease-in-out;
+  }
+
+  body.pharaoh-theme {
+    background-color: #050300 !important;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(230, 130, 10, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 60%),
+      radial-gradient(circle at center, #1c0e01 0%, #050300 100%) !important;
   }
 
   /* Scrollbar */
@@ -3796,6 +3805,7 @@
       stopPharaohMusic();
       particleStormActive = false;
       particleColorsOverride = null;
+      document.body.classList.remove('pharaoh-theme');
       localStorage.removeItem('hextech_user');
       currentUser = null;
       if (socket) socket.disconnect();
@@ -3823,8 +3833,10 @@
         startPharaohMusic();
         particleStormActive = true;
         particleColorsOverride = ['rgba(255,215,0,', 'rgba(230,130,10,', 'rgba(190,150,50,'];
+        document.body.classList.add('pharaoh-theme');
       } else {
         stopPharaohMusic();
+        document.body.classList.remove('pharaoh-theme');
         if (tab !== 'blackjack') {
           particleStormActive = false;
           particleColorsOverride = null;
