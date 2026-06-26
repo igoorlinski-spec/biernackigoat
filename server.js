@@ -135,6 +135,27 @@ function calculateNewRank(currentRank, currentLp, lpChange) {
 
 // ─── REST Endpoints ───────────────────────────────────────────────────────────
 
+// Health check / diagnostics endpoint
+app.get('/api/health', async (req, res) => {
+  const dbUrl = process.env.DATABASE_URL;
+  try {
+    await query('SELECT 1');
+    res.json({
+      status: 'OK',
+      db: 'connected',
+      hasDbUrl: !!dbUrl,
+      dbUrlPreview: dbUrl ? dbUrl.substring(0, 30) + '...' : 'MISSING'
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'ERROR',
+      db: 'disconnected',
+      hasDbUrl: !!dbUrl,
+      error: err.message
+    });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   const { nick, email, password } = req.body;
   if (!nick || !email || !password)
