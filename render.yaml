@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: hextech-stopwatch
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hextech-db
+          property: connectionString
+
+databases:
+  - name: hextech-db
+    databaseName: hextech
+    user: hextech
