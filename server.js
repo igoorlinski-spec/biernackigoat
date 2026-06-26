@@ -1690,15 +1690,12 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
   } else if (game.mode === 'practice') {
     const humanPlayer = game.player1;
     const isHumanWinner = winnerNick === humanPlayer;
-    let coinsReward = 10;
+    let coinsReward = 20;
     if (isHumanWinner) {
-      if (game.difficulty === 'medium') coinsReward = 100;
-      else if (game.difficulty === 'hard') coinsReward = 400;
-      else coinsReward = 50;
+      if (game.difficulty === 'hard') coinsReward = 400;
+      else coinsReward = 100;
     } else {
-      if (game.difficulty === 'medium') coinsReward = 20;
-      else if (game.difficulty === 'hard') coinsReward = 20;
-      else coinsReward = 10;
+      coinsReward = 20;
     }
     await rewardPlayer(humanPlayer, coinsReward, 0, { winner: winnerNick, reward: `+${coinsReward} Coins (Trening)` });
   }
