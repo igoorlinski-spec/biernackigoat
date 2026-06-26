@@ -718,8 +718,8 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const rewardW = 100;
         const rewardL = 0;
 
-        // Reward Winner
-        rewardPlayer(winnerNick, rewardW, 3, { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
+        // Reward Winner (+100 coins, 0 stars)
+        rewardPlayer(winnerNick, rewardW, 0, { winner: winnerNick, reward: `+${rewardW} Coins` });
         
         // Reward Loser (if human)
         if (loserNick !== 'Bot Ezreal') {
@@ -730,7 +730,7 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
         const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
-        // Reward Winner
+        // Reward Winner (+200 coins, 0 stars, +LP)
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
           if (err) console.error('Error fetching ranked winner details:', err);
           if (winUser) {
@@ -738,9 +738,9 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
             db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], (err) => {
               if (err) console.error('Error updating ranked winner rank/lp:', err);
               
-              rewardPlayer(winnerNick, 200, 5, {
+              rewardPlayer(winnerNick, 200, 0, {
                 winner: winnerNick,
-                reward: '+200 Coins, +5 Gwiazdy',
+                reward: '+200 Coins',
                 lpChange: lpGain,
                 newRank: nextW.rank,
                 newLp: nextW.lp,

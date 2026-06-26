@@ -1369,7 +1369,7 @@
           <div>
             <i class="fa-solid fa-gamepad"></i>
             <h3>Tryb Draft</h3>
-            <p>Gra towarzyska do 5 punktów. Zwycięstwo daje dokładnie 100 monet i +3 Gwiazdy. Przegrana nie daje nic.</p>
+            <p>Gra towarzyska do 5 punktów. Zwycięstwo daje dokładnie 100 monet (Gwiazdy są tylko z eventów). Przegrana nie daje nic.</p>
           </div>
           <button class="mode-btn" onclick="joinQueue('draft')">Graj Draft</button>
         </div>
@@ -1378,7 +1378,7 @@
           <div>
             <i class="fa-solid fa-trophy"></i>
             <h3>Tryb Ranked</h3>
-            <p>Poważna rywalizacja 1v1 do 3 punktów. Wygrana daje 200 monet, +5 Gwiazd oraz LP. Przegrana zabiera LP i nie daje żadnych monet.</p>
+            <p>Poważna rywalizacja 1v1 do 3 punktów. Wygrana daje 200 monet oraz LP (Gwiazdy są tylko z eventów). Przegrana zabiera LP i nie daje żadnych monet.</p>
           </div>
           <button class="mode-btn" onclick="joinQueue('ranked')">Graj Ranked</button>
         </div>
@@ -1396,7 +1396,10 @@
           <div>
             <i class="fa-solid fa-crown" style="color: #ffd700; text-shadow: 0 0 15px #ffd700;"></i>
             <h3 style="color: #ffd700;">Event Faraon</h3>
-            <p>Graj solo. Musisz zatrzymać stoper dokładnie na 1.00s (różnica 0.00s). Jeśli trafisz idealnie, otrzymasz +1 Gwiazdę!</p>
+            <p>Graj solo. Wydarzenie trwa do 5 lipca 2026. Musisz zatrzymać stoper dokładnie na 1.00s (różnica 0.00s). Jeśli trafisz idealnie, otrzymasz +1 Gwiazdę!</p>
+            <div id="event-countdown" style="margin-top: 15px; font-size: 0.85rem; color: #ffd700; font-weight: bold; border: 1px dashed rgba(255,215,0,0.3); padding: 8px; border-radius: 4px;">
+              Ładowanie czasu eventu...
+            </div>
           </div>
           <button class="mode-btn" style="border-color: #ffd700; color: #ffd700;" onclick="startPharaohEvent()">Graj Event</button>
         </div>
@@ -1697,6 +1700,7 @@
         authorizeUser(currentUser);
       }
       renderShop();
+      updateEventCountdown();
     });
 
     // Handle Auth toggle (Login vs Register)
@@ -2121,6 +2125,35 @@
       }
     }
 
+    // Live countdown timer until July 5th, 2026
+    function updateEventCountdown() {
+      const countdownEl = document.getElementById('event-countdown');
+      if (!countdownEl) return;
+
+      const targetDate = new Date('2026-07-05T00:00:00+02:00').getTime();
+
+      const timerInterval = setInterval(() => {
+        const now = Date.now();
+        const difference = targetDate - now;
+
+        if (difference <= 0) {
+          clearInterval(timerInterval);
+          countdownEl.innerText = 'Wydarzenie dobiegło końca!';
+          countdownEl.style.color = 'var(--red-primary)';
+          const playBtn = document.querySelector('.pharaoh-event button');
+          if (playBtn) playBtn.disabled = true;
+          return;
+        }
+
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+        countdownEl.innerHTML = `<i class="fa-solid fa-clock"></i> Koniec za: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      }, 1000);
+    }
+
     // Shop render and buy functions
     function switchShopSubTab(subTab) {
       activeShopSubTab = subTab;
@@ -2137,7 +2170,7 @@
         if (desc) desc.innerText = 'Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!';
       } else {
         if (title) title.innerText = 'Sklep umiejętności';
-        if (desc) desc.innerText = 'Kupuj specjalne umiejętności za gwiazdy zdobyte w meczach rankingowych i draftowych!';
+        if (desc) desc.innerText = 'Kupuj specjalne umiejętności za gwiazdy zdobyte w wydarzeniach specjalnych!';
       }
       
       renderShop();
