@@ -1286,7 +1286,7 @@ io.on('connection', (socket) => {
       let botError = 0;
       if (game.difficulty === 'easy') { botError = (Math.random() * 2.4 - 1.2); if (Math.random() < 0.35) botError += (Math.random() * 2.0 - 1.0); }
       else if (game.difficulty === 'medium') { botError = (Math.random() * 1.0 - 0.5); if (Math.random() < 0.2) botError += (Math.random() * 0.8 - 0.4); }
-      else if (game.difficulty === 'hard') { botError = (Math.random() * 0.55 - 0.50); }
+      else if (game.difficulty === 'hard') { botError = (Math.random() * 0.30 - 0.15); }
 
       if (game.activeEffects[bot].tony) botError += (botError >= 0 ? 1.00 : -1.00);
       if (game.activeEffects[bot].shake) botError += (botError >= 0 ? 0.30 : -0.30);
@@ -1492,9 +1492,20 @@ function evaluateRound(gameId) {
   if (game.activeEffects[p2].tony) val2 += 1.00;
 
   let roundWinner = null;
-  if (val1 === val2) roundWinner = 'draw';
-  else if (val1 < val2) { roundWinner = p1; game.scores[p1]++; }
-  else { roundWinner = p2; game.scores[p2]++; }
+  const isP1Perfect = Math.abs(diff1) === 0;
+  const isP2Perfect = Math.abs(diff2) === 0;
+
+  if (val1 === val2) {
+    roundWinner = 'draw';
+    game.scores[p1] += isP1Perfect ? 2 : 1;
+    game.scores[p2] += isP2Perfect ? 2 : 1;
+  } else if (val1 < val2) {
+    roundWinner = p1;
+    game.scores[p1] += isP1Perfect ? 2 : 1;
+  } else {
+    roundWinner = p2;
+    game.scores[p2] += isP2Perfect ? 2 : 1;
+  }
 
   const s1 = onlineUsers[p1];
   if (s1) {
@@ -1597,9 +1608,13 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
     const isHumanWinner = winnerNick === humanPlayer;
     let coinsReward = 10;
     if (isHumanWinner) {
-      if (game.difficulty === 'medium') coinsReward = 70;
-      else if (game.difficulty === 'hard') coinsReward = 100;
+      if (game.difficulty === 'medium') coinsReward = 100;
+      else if (game.difficulty === 'hard') coinsReward = 400;
       else coinsReward = 50;
+    } else {
+      if (game.difficulty === 'medium') coinsReward = 20;
+      else if (game.difficulty === 'hard') coinsReward = 20;
+      else coinsReward = 10;
     }
     await rewardPlayer(humanPlayer, coinsReward, 0, { winner: winnerNick, reward: `+${coinsReward} Coins (Trening)` });
   }

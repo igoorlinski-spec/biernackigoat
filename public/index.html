@@ -801,6 +801,15 @@
     animation: glowPulse 3s ease infinite;
   }
   .profile-avatar-large img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+  .legendary-avatar-glow {
+    box-shadow: 0 0 15px #ffd700, 0 0 30px rgba(255, 215, 0, 0.4), inset 0 0 10px #ffd700 !important;
+    border-color: #ffd700 !important;
+    animation: goldGlowPulse 2.5s infinite alternate !important;
+  }
+  @keyframes goldGlowPulse {
+    0% { box-shadow: 0 0 8px #ffd700, 0 0 20px rgba(255, 215, 0, 0.3), inset 0 0 5px #ffd700; }
+    100% { box-shadow: 0 0 22px #ffd700, 0 0 45px rgba(255, 215, 0, 0.7), inset 0 0 15px #ffd700; }
+  }
   .profile-nick { font-family: var(--font-title); font-size: 1.7rem; margin-bottom: 5px; }
   .profile-rank { font-family: var(--font-title); color: var(--gold-primary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; animation: goldGlow 3s ease infinite; }
   .profile-lp { color: var(--cyan-primary); font-weight: bold; margin-bottom: 22px; font-family: var(--font-mono); font-size: 1.1rem; }
@@ -3738,7 +3747,8 @@
     function updateUserUIElements() {
       let avatarHtml = `<i class="fa-solid fa-shield-halved" style="margin-right: 6px;"></i>`;
       if (currentUser.activeIcon && currentUser.activeIcon !== 'default') {
-        avatarHtml = `<img src="/assets/images/${currentUser.activeIcon}.png" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle; border: 1px solid var(--gold-primary);">`;
+        const isLeg = ['irys', 'young_maga'].includes(currentUser.activeIcon);
+        avatarHtml = `<img src="/assets/images/${currentUser.activeIcon}.png" class="${isLeg ? 'legendary-avatar-glow' : ''}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle; border: 1.5px solid var(--gold-primary);">`;
       }
       document.getElementById('player-tag').innerHTML = `${avatarHtml}${currentUser.nick}`;
       document.getElementById('user-coins').innerText = currentUser.coins;
@@ -3764,6 +3774,8 @@
         
         if (p1Avatar) {
           const userIcon = role === 'player1' ? yourIcon : opponentIcon;
+          const isLeg = ['irys', 'young_maga'].includes(userIcon);
+          p1Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p1Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           } else {
@@ -3772,6 +3784,8 @@
         }
         if (p2Avatar) {
           const userIcon = role === 'player2' ? yourIcon : opponentIcon;
+          const isLeg = ['irys', 'young_maga'].includes(userIcon);
+          p2Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p2Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           } else {
@@ -5488,6 +5502,8 @@
           // Set large profile avatar
           const avatarContainer = document.getElementById('prof-avatar-container');
           if (avatarContainer) {
+            const isLeg = ['irys', 'young_maga'].includes(data.activeIcon);
+            avatarContainer.className = `profile-avatar-large ${isLeg ? 'legendary-avatar-glow' : ''}`;
             if (data.activeIcon && data.activeIcon !== 'default') {
               avatarContainer.innerHTML = `<img src="/assets/images/${data.activeIcon}.png">`;
             } else {
