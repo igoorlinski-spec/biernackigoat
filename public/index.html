@@ -1464,30 +1464,48 @@
     </div>
   </header>
 
-  <main>
     <!-- Auth View -->
     <div id="auth-view" class="auth-container">
-      <h2 id="auth-title">Logowanie</h2>
+      <!-- Tab buttons -->
+      <div style="display:flex; margin-bottom:20px; border-radius:8px; overflow:hidden; border:1px solid rgba(200,170,110,0.3);">
+        <button id="tab-login-btn" onclick="showLoginTab()" style="flex:1; padding:12px; background:rgba(200,170,110,0.2); color:var(--gold-primary); border:none; cursor:pointer; font-family:var(--font-title); font-size:0.95rem; letter-spacing:1px; border-right:1px solid rgba(200,170,110,0.3);">LOGOWANIE</button>
+        <button id="tab-reg-btn" onclick="showRegTab()" style="flex:1; padding:12px; background:transparent; color:var(--text-muted); border:none; cursor:pointer; font-family:var(--font-title); font-size:0.95rem; letter-spacing:1px;">REJESTRACJA</button>
+      </div>
+
+      <!-- Error/success message -->
       <div id="auth-msg" style="display:none; padding:10px 14px; border-radius:8px; margin-bottom:15px; font-size:0.9rem; font-weight:bold; text-align:center;"></div>
-      <form id="auth-form" onsubmit="handleAuth(event)">
-        <div class="form-group" id="auth-email-group" style="display: none;">
-          <label for="auth-email">E-mail</label>
-          <input type="email" id="auth-email" placeholder="Wpisz swój e-mail">
+
+      <!-- LOGIN FORM -->
+      <div id="login-tab">
+        <div class="form-group">
+          <label for="login-nick">Nick lub E-mail</label>
+          <input type="text" id="login-nick" placeholder="Wpisz nick lub e-mail">
         </div>
         <div class="form-group">
-          <label id="auth-nick-label" for="auth-nick">Nick / E-mail</label>
-          <input type="text" id="auth-nick" required placeholder="Wpisz swój nick lub e-mail">
+          <label for="login-pass">Hasło</label>
+          <input type="password" id="login-pass" placeholder="Wpisz hasło">
+        </div>
+        <button onclick="doLogin()" class="auth-btn" id="login-btn">Zaloguj się</button>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div id="reg-tab" style="display:none;">
+        <div class="form-group">
+          <label for="reg-nick">Nick (max 10 znaków)</label>
+          <input type="text" id="reg-nick" maxlength="10" placeholder="Wpisz nick">
         </div>
         <div class="form-group">
-          <label for="auth-password">Hasło</label>
-          <input type="password" id="auth-password" required placeholder="Wpisz hasło">
+          <label for="reg-email">E-mail</label>
+          <input type="email" id="reg-email" placeholder="Wpisz e-mail">
         </div>
-        <button type="submit" id="auth-submit-btn" class="auth-btn">Zaloguj się</button>
-      </form>
-      <div class="auth-switch">
-        <p id="auth-switch-text">Nie masz konta? <span onclick="toggleAuthMode()">Zarejestruj się</span></p>
+        <div class="form-group">
+          <label for="reg-pass">Hasło</label>
+          <input type="password" id="reg-pass" placeholder="Wpisz hasło">
+        </div>
+        <button onclick="doRegister()" class="auth-btn" id="reg-btn">Zarejestruj się</button>
       </div>
     </div>
+
 
     <!-- Lobby View -->
     <div id="lobby-view" class="view">
@@ -2187,6 +2205,7 @@
 
     function showAuthMsg(msg, isError) {
       const el = document.getElementById('auth-msg');
+      if (!el) return;
       el.innerText = msg;
       el.style.display = 'block';
       el.style.background = isError ? 'rgba(229,57,53,0.2)' : 'rgba(76,175,80,0.2)';
@@ -2194,57 +2213,85 @@
       el.style.color = isError ? '#ff5252' : '#69f0ae';
     }
 
-    async function handleAuth(event) {
-      event.preventDefault();
-      const nickOrEmail = document.getElementById('auth-nick').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const email = document.getElementById('auth-email').value.trim();
-      const btn = document.getElementById('auth-submit-btn');
+    function showLoginTab() {
+      document.getElementById('login-tab').style.display = 'block';
+      document.getElementById('reg-tab').style.display = 'none';
+      document.getElementById('tab-login-btn').style.background = 'rgba(200,170,110,0.2)';
+      document.getElementById('tab-login-btn').style.color = 'var(--gold-primary)';
+      document.getElementById('tab-reg-btn').style.background = 'transparent';
+      document.getElementById('tab-reg-btn').style.color = 'var(--text-muted)';
+      document.getElementById('auth-msg').style.display = 'none';
+    }
 
-      if (!nickOrEmail || !password) {
-        showAuthMsg('Wypełnij wszystkie pola!', true);
-        return;
-      }
-      if (isRegisterMode && !email) {
-        showAuthMsg('Wpisz adres e-mail!', true);
-        return;
-      }
+    function showRegTab() {
+      document.getElementById('login-tab').style.display = 'none';
+      document.getElementById('reg-tab').style.display = 'block';
+      document.getElementById('tab-reg-btn').style.background = 'rgba(200,170,110,0.2)';
+      document.getElementById('tab-reg-btn').style.color = 'var(--gold-primary)';
+      document.getElementById('tab-login-btn').style.background = 'transparent';
+      document.getElementById('tab-login-btn').style.color = 'var(--text-muted)';
+      document.getElementById('auth-msg').style.display = 'none';
+    }
 
-      btn.disabled = true;
-      btn.innerText = 'Ładowanie...';
-
-      const endpoint = isRegisterMode ? '/api/register' : '/api/login';
-      const payload = isRegisterMode 
-        ? { nick: nickOrEmail, email, password } 
-        : { nickOrEmail, password };
-
+    async function doLogin() {
+      const nickOrEmail = document.getElementById('login-nick').value.trim();
+      const password = document.getElementById('login-pass').value;
+      if (!nickOrEmail || !password) { showAuthMsg('Wypełnij nick/email i hasło!', true); return; }
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true; btn.innerText = 'Ładowanie...';
       try {
-        const response = await fetch(endpoint, {
+        const r = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ nickOrEmail, password })
         });
-        const data = await response.json();
-
-        if (response.ok) {
-          if (isRegisterMode) {
-            showAuthMsg('Konto zarejestrowane! Zaloguj się teraz.', false);
-            toggleAuthMode();
-          } else {
-            currentUser = data;
-            localStorage.setItem('hextech_user', JSON.stringify(data));
-            authorizeUser(data);
-          }
+        const data = await r.json();
+        if (r.ok) {
+          currentUser = data;
+          localStorage.setItem('hextech_user', JSON.stringify(data));
+          authorizeUser(data);
         } else {
-          showAuthMsg(data.error || 'Wystąpił błąd', true);
+          showAuthMsg(data.error || 'Błąd logowania', true);
         }
-      } catch (err) {
-        showAuthMsg('Błąd połączenia z serwerem: ' + err.message, true);
-      } finally {
-        btn.disabled = false;
-        btn.innerText = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+      } catch(e) {
+        showAuthMsg('Błąd sieci: ' + e.message, true);
       }
+      btn.disabled = false; btn.innerText = 'Zaloguj się';
     }
+
+    async function doRegister() {
+      const nick = document.getElementById('reg-nick').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-pass').value;
+      if (!nick) { showAuthMsg('Wpisz nick!', true); return; }
+      if (!email) { showAuthMsg('Wpisz e-mail!', true); return; }
+      if (!password) { showAuthMsg('Wpisz hasło!', true); return; }
+      if (nick.length > 10) { showAuthMsg('Nick max 10 znaków!', true); return; }
+      const btn = document.getElementById('reg-btn');
+      btn.disabled = true; btn.innerText = 'Rejestrowanie...';
+      try {
+        const r = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick, email, password })
+        });
+        const data = await r.json();
+        if (r.ok) {
+          showAuthMsg('Konto utworzone! Zaloguj się.', false);
+          showLoginTab();
+        } else {
+          showAuthMsg(data.error || 'Błąd rejestracji', true);
+        }
+      } catch(e) {
+        showAuthMsg('Błąd sieci: ' + e.message, true);
+      }
+      btn.disabled = false; btn.innerText = 'Zarejestruj się';
+    }
+
+    // Keep old toggleAuthMode for compatibility
+    function toggleAuthMode() { showRegTab(); }
+    function handleAuth(e) { if(e) e.preventDefault(); }
+
 
     function authorizeUser(userData) {
       document.getElementById('auth-view').style.display = 'none';
