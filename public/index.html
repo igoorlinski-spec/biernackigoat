@@ -1468,6 +1468,7 @@
     <!-- Auth View -->
     <div id="auth-view" class="auth-container">
       <h2 id="auth-title">Logowanie</h2>
+      <div id="auth-msg" style="display:none; padding:10px 14px; border-radius:8px; margin-bottom:15px; font-size:0.9rem; font-weight:bold; text-align:center;"></div>
       <form id="auth-form" onsubmit="handleAuth(event)">
         <div class="form-group" id="auth-email-group" style="display: none;">
           <label for="auth-email">E-mail</label>
@@ -2184,11 +2185,33 @@
         'Nie masz konta? <span onclick="toggleAuthMode()">Zarejestruj się</span>';
     }
 
+    function showAuthMsg(msg, isError) {
+      const el = document.getElementById('auth-msg');
+      el.innerText = msg;
+      el.style.display = 'block';
+      el.style.background = isError ? 'rgba(229,57,53,0.2)' : 'rgba(76,175,80,0.2)';
+      el.style.border = isError ? '1px solid #e53935' : '1px solid #4caf50';
+      el.style.color = isError ? '#ff5252' : '#69f0ae';
+    }
+
     async function handleAuth(event) {
       event.preventDefault();
       const nickOrEmail = document.getElementById('auth-nick').value.trim();
       const password = document.getElementById('auth-password').value;
       const email = document.getElementById('auth-email').value.trim();
+      const btn = document.getElementById('auth-submit-btn');
+
+      if (!nickOrEmail || !password) {
+        showAuthMsg('Wypełnij wszystkie pola!', true);
+        return;
+      }
+      if (isRegisterMode && !email) {
+        showAuthMsg('Wpisz adres e-mail!', true);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Ładowanie...';
 
       const endpoint = isRegisterMode ? '/api/register' : '/api/login';
       const payload = isRegisterMode 
@@ -2205,7 +2228,7 @@
 
         if (response.ok) {
           if (isRegisterMode) {
-            showToast('Konto zarejestrowane! Zaloguj się.');
+            showAuthMsg('Konto zarejestrowane! Zaloguj się teraz.', false);
             toggleAuthMode();
           } else {
             currentUser = data;
@@ -2213,10 +2236,13 @@
             authorizeUser(data);
           }
         } else {
-          showToast(data.error || 'Wystąpił błąd');
+          showAuthMsg(data.error || 'Wystąpił błąd', true);
         }
       } catch (err) {
-        showToast('Błąd połączenia z serwerem');
+        showAuthMsg('Błąd połączenia z serwerem: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
       }
     }
 
