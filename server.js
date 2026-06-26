@@ -26,7 +26,26 @@ const db = new sqlite3.Database(dbPath, (err) => {
     console.error('Database connection error:', err);
   } else {
     console.log('Connected to SQLite database.');
-    initializeDatabase();
+    
+    // Check if table users exists and has 'email' column, drop if old to reset
+    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
+      if (!err && row) {
+        db.run("SELECT email FROM users LIMIT 1", (err) => {
+          if (err && (err.message.includes("no such column") || err.message.includes("no such table"))) {
+            console.log("Old database schema detected. Dropping tables to reset database...");
+            db.serialize(() => {
+              db.run("DROP TABLE IF EXISTS users");
+              db.run("DROP TABLE IF EXISTS matches");
+              initializeDatabase();
+            });
+          } else {
+            initializeDatabase();
+          }
+        });
+      } else {
+        initializeDatabase();
+      }
+    });
   }
 });
 
@@ -34,7 +53,9 @@ function initializeDatabase() {
   db.serialize(() => {
     db.run(`
       CREATE TABLE IF NOT EXISTS users (
-        nick TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        nick TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         coins INTEGER DEFAULT 0,
         lp INTEGER DEFAULT 0,
@@ -48,36 +69,6 @@ function initializeDatabase() {
         last_daily_claim INTEGER DEFAULT 0
       )
     `);
-
-    // Ensure stars column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN stars INTEGER DEFAULT 0`, (err) => {
-      // Ignore if column already exists
-    });
-
-    // Ensure unlocked_skills column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN unlocked_skills TEXT DEFAULT ''`, (err) => {
-      // Ignore if column already exists
-    });
-
-    // Ensure active_champion column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN active_champion TEXT DEFAULT 'Zygzak'`, (err) => {
-      // Ignore if column already exists
-    });
-
-    // Ensure unlocked_icons column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN unlocked_icons TEXT DEFAULT 'dalton,tusk'`, (err) => {
-      // Ignore if column already exists
-    });
-
-    // Ensure active_icon column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN active_icon TEXT DEFAULT 'default'`, (err) => {
-      // Ignore if column already exists
-    });
-
-    // Ensure last_daily_claim column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN last_daily_claim INTEGER DEFAULT 0`, (err) => {
-      // Ignore if column already exists
-    });
 
     db.run(`
       CREATE TABLE IF NOT EXISTS matches (
@@ -154,21 +145,31 @@ function calculateNewRank(currentRank, currentLp, lpChange) {
 
 // REST Endpoints
 app.post('/api/register', (req, res) => {
-  const { nick, password } = req.body;
-  if (!nick || !password) {
-    return res.status(400).json({ error: 'Nick and password are required' });
+  const { nick, email, password } = req.body;
+  if (!nick || !email || !password) {
+    return res.status(400).json({ error: 'Nick, e-mail i hasło są wymagane' });
   }
 
-  db.get('SELECT nick FROM users WHERE nick = ?', [nick], (err, row) => {
+  if (nick.length > 10) {
+    return res.status(400).json({ error: 'Nick może mieć maksymalnie 10 znaków' });
+  }
+
+  db.get('SELECT nick, email FROM users WHERE nick = ? OR email = ?', [nick, email.toLowerCase()], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (row) return res.status(400).json({ error: 'Nick already taken' });
+    if (row) {
+      if (row.nick === nick) {
+        return res.status(400).json({ error: 'Ten nick jest już zajęty' });
+      } else {
+        return res.status(400).json({ error: 'Ten e-mail jest już zarejestrowany' });
+      }
+    }
 
     bcrypt.hash(password, 10, (err, hash) => {
       if (err) return res.status(500).json({ error: err.message });
 
       db.run(
-        'INSERT INTO users (nick, password, unlocked_icons) VALUES (?, ?, ?)',
-        [nick, hash, 'dalton,tusk'],
+        'INSERT INTO users (email, nick, password, unlocked_icons) VALUES (?, ?, ?, ?)',
+        [email.toLowerCase(), nick, hash, 'dalton,tusk'],
         function(err) {
           if (err) return res.status(500).json({ error: err.message });
           res.json({ success: true });
@@ -179,14 +180,18 @@ app.post('/api/register', (req, res) => {
 });
 
 app.post('/api/login', (req, res) => {
-  const { nick, password } = req.body;
-  db.get('SELECT * FROM users WHERE nick = ?', [nick], (err, user) => {
+  const { nickOrEmail, password } = req.body;
+  if (!nickOrEmail || !password) {
+    return res.status(400).json({ error: 'Nick/E-mail i hasło są wymagane' });
+  }
+
+  db.get('SELECT * FROM users WHERE nick = ? OR email = ?', [nickOrEmail, nickOrEmail.toLowerCase()], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
-    if (!user) return res.status(400).json({ error: 'User not found' });
+    if (!user) return res.status(400).json({ error: 'Nie znaleziono użytkownika' });
 
     bcrypt.compare(password, user.password, (err, isMatch) => {
       if (err) return res.status(500).json({ error: err.message });
-      if (!isMatch) return res.status(400).json({ error: 'Incorrect password' });
+      if (!isMatch) return res.status(400).json({ error: 'Błędne hasło' });
 
       let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
       if (!icons.includes('dalton')) icons.push('dalton');
@@ -194,6 +199,7 @@ app.post('/api/login', (req, res) => {
 
       res.json({
         nick: user.nick,
+        email: user.email,
         coins: user.coins,
         lp: user.lp,
         rank: user.rank,

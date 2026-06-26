@@ -1456,9 +1456,13 @@
     <div id="auth-view" class="auth-container">
       <h2 id="auth-title">Logowanie</h2>
       <form id="auth-form" onsubmit="handleAuth(event)">
+        <div class="form-group" id="auth-email-group" style="display: none;">
+          <label for="auth-email">E-mail</label>
+          <input type="email" id="auth-email" placeholder="Wpisz swój e-mail">
+        </div>
         <div class="form-group">
-          <label for="auth-nick">Nick</label>
-          <input type="text" id="auth-nick" required placeholder="Wpisz swój nick">
+          <label id="auth-nick-label" for="auth-nick">Nick / E-mail</label>
+          <input type="text" id="auth-nick" required placeholder="Wpisz swój nick lub e-mail">
         </div>
         <div class="form-group">
           <label for="auth-password">Hasło</label>
@@ -1953,6 +1957,26 @@
       isRegisterMode = !isRegisterMode;
       document.getElementById('auth-title').innerText = isRegisterMode ? 'Rejestracja' : 'Logowanie';
       document.getElementById('auth-submit-btn').innerText = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+      
+      const emailGroup = document.getElementById('auth-email-group');
+      const nickLabel = document.getElementById('auth-nick-label');
+      const nickInput = document.getElementById('auth-nick');
+      const emailInput = document.getElementById('auth-email');
+
+      if (isRegisterMode) {
+        emailGroup.style.display = 'block';
+        emailInput.required = true;
+        nickLabel.innerText = 'Nick';
+        nickInput.placeholder = 'Wpisz swój nick (maks. 10 znaków)';
+        nickInput.maxLength = 10;
+      } else {
+        emailGroup.style.display = 'none';
+        emailInput.required = false;
+        nickLabel.innerText = 'Nick / E-mail';
+        nickInput.placeholder = 'Wpisz swój nick lub e-mail';
+        nickInput.removeAttribute('maxLength');
+      }
+
       document.getElementById('auth-switch-text').innerHTML = isRegisterMode ? 
         'Masz już konto? <span onclick="toggleAuthMode()">Zaloguj się</span>' : 
         'Nie masz konta? <span onclick="toggleAuthMode()">Zarejestruj się</span>';
@@ -1960,15 +1984,20 @@
 
     async function handleAuth(event) {
       event.preventDefault();
-      const nick = document.getElementById('auth-nick').value.trim();
+      const nickOrEmail = document.getElementById('auth-nick').value.trim();
       const password = document.getElementById('auth-password').value;
+      const email = document.getElementById('auth-email').value.trim();
 
       const endpoint = isRegisterMode ? '/api/register' : '/api/login';
+      const payload = isRegisterMode 
+        ? { nick: nickOrEmail, email, password } 
+        : { nickOrEmail, password };
+
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nick, password })
+          body: JSON.stringify(payload)
         });
         const data = await response.json();
 
