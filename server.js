@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = require('./db_adapter');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const path = require('path');
@@ -366,7 +366,42 @@ app.post('/api/claim-daily-chest', (req, res) => {
   });
 });
 
-app.post('/api/blackjack', (req, res) => {
+// Active Blackjack game states in memory
+const activeBJGames = {};
+
+const generateDeck = () => {
+  const suits = ['♠', '♥', '♦', '♣'];
+  const values = [
+    { val: '2', score: 2 }, { val: '3', score: 3 }, { val: '4', score: 4 },
+    { val: '5', score: 5 }, { val: '6', score: 6 }, { val: '7', score: 7 },
+    { val: '8', score: 8 }, { val: '9', score: 9 }, { val: '10', score: 10 },
+    { val: 'J', score: 10 }, { val: 'Q', score: 10 }, { val: 'K', score: 10 },
+    { val: 'A', score: 11 }
+  ];
+  const deck = [];
+  for (const suit of suits) {
+    for (const v of values) {
+      deck.push({ suit, value: v.val, score: v.score });
+    }
+  }
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+};
+
+const calculateBJScore = (hand) => {
+  let score = hand.reduce((acc, card) => acc + card.score, 0);
+  let aces = hand.filter(card => card.value === 'A').length;
+  while (score > 21 && aces > 0) {
+    score -= 10;
+    aces--;
+  }
+  return score;
+};
+
+app.post('/api/casino/blackjack/start', (req, res) => {
   const { nick, bet } = req.body;
   if (!nick || !bet) return res.status(400).json({ error: 'Nick and bet are required' });
 
@@ -380,81 +415,295 @@ app.post('/api/blackjack', (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.coins < betAmount) return res.status(400).json({ error: 'Not enough coins' });
 
-    // Dealer wins 70% of the time, player wins 30%
-    const playerWins = Math.random() < 0.3;
-    let playerTarget, dealerTarget;
+    const newCoins = user.coins - betAmount;
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
 
-    if (playerWins) {
-      playerTarget = 19 + Math.floor(Math.random() * 3); // 19, 20, 21
-      if (Math.random() < 0.5) {
-        dealerTarget = 22 + Math.floor(Math.random() * 5); // 22 to 26 (bust)
-      } else {
-        dealerTarget = 17 + Math.floor(Math.random() * (playerTarget - 17)); // 17 to playerTarget - 1
-      }
-    } else {
-      if (Math.random() < 0.4) {
-        playerTarget = 22 + Math.floor(Math.random() * 5); // Player busts (22 to 26)
-        dealerTarget = 17 + Math.floor(Math.random() * 4); // Dealer stands (17 to 20)
-      } else {
-        playerTarget = 16 + Math.floor(Math.random() * 4); // Player stands (16 to 19)
-        dealerTarget = playerTarget + 1 + Math.floor(Math.random() * (21 - playerTarget)); // Dealer beats player
-      }
+      const deck = generateDeck();
+      const playerHand = [deck.pop(), deck.pop()];
+      const dealerHand = [deck.pop(), deck.pop()];
+
+      activeBJGames[nick] = {
+        deck,
+        playerHand,
+        dealerHand,
+        bet: betAmount
+      };
+
+      res.json({
+        success: true,
+        playerHand,
+        dealerHand: [dealerHand[0], { suit: '?', value: '?', score: 0 }],
+        playerScore: calculateBJScore(playerHand),
+        dealerScore: dealerHand[0].score,
+        newCoins
+      });
+    });
+  });
+});
+
+app.post('/api/casino/blackjack/hit', (req, res) => {
+  const { nick } = req.body;
+  const game = activeBJGames[nick];
+  if (!game) return res.status(400).json({ error: 'No active game found' });
+
+  const newCard = game.deck.pop();
+  game.playerHand.push(newCard);
+  const playerScore = calculateBJScore(game.playerHand);
+
+  if (playerScore > 21) {
+    delete activeBJGames[nick];
+    res.json({
+      success: true,
+      status: 'bust',
+      playerHand: game.playerHand,
+      dealerHand: game.dealerHand,
+      playerScore,
+      dealerScore: calculateBJScore(game.dealerHand),
+      message: 'Bust!'
+    });
+  } else {
+    res.json({
+      success: true,
+      status: 'playing',
+      playerHand: game.playerHand,
+      dealerHand: [game.dealerHand[0], { suit: '?', value: '?', score: 0 }],
+      playerScore,
+      dealerScore: game.dealerHand[0].score
+    });
+  }
+});
+
+app.post('/api/casino/blackjack/stand', (req, res) => {
+  const { nick } = req.body;
+  const game = activeBJGames[nick];
+  if (!game) return res.status(400).json({ error: 'No active game found' });
+
+  let playerScore = calculateBJScore(game.playerHand);
+  let dealerScore = calculateBJScore(game.dealerHand);
+
+  while (dealerScore < 17) {
+    game.dealerHand.push(game.deck.pop());
+    dealerScore = calculateBJScore(game.dealerHand);
+  }
+
+  let result = 'lose';
+  let payout = 0;
+
+  if (dealerScore > 21) {
+    result = 'win';
+    payout = game.bet * 2;
+  } else if (playerScore > dealerScore) {
+    result = 'win';
+    payout = game.bet * 2;
+  } else if (playerScore === dealerScore) {
+    result = 'push';
+    payout = game.bet;
+  }
+
+  db.get('SELECT coins FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err || !user) {
+      delete activeBJGames[nick];
+      return res.status(500).json({ error: 'Internal error' });
     }
 
-    const generateHand = (targetScore) => {
-      const suits = ['♠', '♥', '♦', '♣'];
-      const hand = [];
-      let currentScore = 0;
-      while (currentScore < targetScore) {
-        let needed = targetScore - currentScore;
-        let cardVal;
-        let cardScore;
-        if (needed > 11) {
-          cardScore = Math.floor(Math.random() * 10) + 2;
-          if (cardScore === 10) {
-            cardVal = ['10', 'J', 'Q', 'K'][Math.floor(Math.random() * 4)];
-          } else if (cardScore === 11) {
-            cardVal = 'A';
-          } else {
-            cardVal = String(cardScore);
-          }
-        } else {
-          cardScore = needed;
-          if (cardScore === 10) {
-            cardVal = ['10', 'J', 'Q', 'K'][Math.floor(Math.random() * 4)];
-          } else if (cardScore === 11) {
-            cardVal = 'A';
-          } else {
-            cardVal = String(cardScore);
-          }
+    const newCoins = user.coins + payout;
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], (err) => {
+      delete activeBJGames[nick];
+      if (err) return res.status(500).json({ error: err.message });
+
+      res.json({
+        success: true,
+        status: result,
+        playerHand: game.playerHand,
+        dealerHand: game.dealerHand,
+        playerScore,
+        dealerScore,
+        payout,
+        newCoins
+      });
+    });
+  });
+});
+
+const RED_NUMBERS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+
+app.post('/api/casino/roulette', (req, res) => {
+  const { nick, bets } = req.body;
+  if (!nick || !bets) return res.status(400).json({ error: 'Nick and bets are required' });
+
+  let totalBet = 0;
+  for (const key in bets) {
+    const val = parseInt(bets[key], 10);
+    if (isNaN(val) || val < 0) return res.status(400).json({ error: 'Invalid bet' });
+    totalBet += val;
+  }
+
+  if (totalBet < 10 || totalBet > 1000) {
+    return res.status(400).json({ error: 'Zakład musi wynosić od 10 do 1000 monet' });
+  }
+
+  db.get('SELECT coins FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.coins < totalBet) return res.status(400).json({ error: 'Za mało monet' });
+
+    const winNumber = Math.floor(Math.random() * 37);
+    let winColor = 'green';
+    if (winNumber > 0) {
+      winColor = RED_NUMBERS.includes(winNumber) ? 'red' : 'black';
+    }
+
+    let payout = 0;
+    for (const key in bets) {
+      const betVal = parseInt(bets[key], 10);
+      if (!betVal || betVal <= 0) continue;
+
+      if (key === 'red' && winColor === 'red') {
+        payout += betVal * 2;
+      } else if (key === 'black' && winColor === 'black') {
+        payout += betVal * 2;
+      } else if (key.startsWith('num_')) {
+        const num = parseInt(key.split('_')[1], 10);
+        if (num === winNumber) {
+          payout += betVal * 36;
         }
-        const suit = suits[Math.floor(Math.random() * suits.length)];
-        hand.push({ suit, value: cardVal, score: cardScore });
-        currentScore += cardScore;
       }
-      return hand;
-    };
-
-    const playerHand = generateHand(playerTarget);
-    const dealerHand = generateHand(dealerTarget);
-
-    let coinDiff = -betAmount;
-    if (playerWins) {
-      coinDiff = betAmount; // +2x bet in total, so net gain is +betAmount
     }
-    const newCoins = user.coins + coinDiff;
 
-    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], function(err) {
+    const newCoins = user.coins - totalBet + payout;
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], (err) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({
         success: true,
-        win: playerWins,
-        playerHand,
-        dealerHand,
-        playerScore: playerTarget,
-        dealerScore: dealerTarget,
-        newCoins,
-        rewardCoins: playerWins ? betAmount * 2 : 0
+        number: winNumber,
+        color: winColor,
+        payout,
+        totalBet,
+        newCoins
+      });
+    });
+  });
+});
+
+const SPORTS_MATCHES = {
+  match_1: { id: 'match_1', home: 'Polska', away: 'Niemcy', odds: { '1': 3.20, 'X': 3.40, '2': 2.10 }, probs: [0.28, 0.55] },
+  match_2: { id: 'match_2', home: 'Brazylia', away: 'Argentyna', odds: { '1': 2.20, 'X': 3.10, '2': 2.45 }, probs: [0.42, 0.70] },
+  match_3: { id: 'match_3', home: 'Francja', away: 'Hiszpania', odds: { '1': 2.05, 'X': 3.20, '2': 2.70 }, probs: [0.45, 0.73] },
+  match_4: { id: 'match_4', home: 'Portugalia', away: 'Włochy', odds: { '1': 2.30, 'X': 3.00, '2': 2.50 }, probs: [0.40, 0.70] }
+};
+
+app.post('/api/casino/sports/bet', (req, res) => {
+  const { nick, matchId, prediction, bet } = req.body;
+  if (!nick || !matchId || !prediction || !bet) return res.status(400).json({ error: 'Missing parameters' });
+
+  const betAmount = parseInt(bet, 10);
+  if (isNaN(betAmount) || betAmount < 10 || betAmount > 500) {
+    return res.status(400).json({ error: 'Zakład musi wynosić od 10 do 500 monet' });
+  }
+
+  const match = SPORTS_MATCHES[matchId];
+  if (!match) return res.status(400).json({ error: 'Invalid match ID' });
+
+  const oddsVal = match.odds[prediction];
+  if (!oddsVal) return res.status(400).json({ error: 'Invalid prediction' });
+
+  db.get('SELECT coins FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.coins < betAmount) return res.status(400).json({ error: 'Za mało monet' });
+
+    const rand = Math.random();
+    let outcome = '2';
+    if (rand < match.probs[0]) {
+      outcome = '1';
+    } else if (rand < match.probs[1]) {
+      outcome = 'X';
+    }
+
+    let homeGoals = 0;
+    let awayGoals = 0;
+    if (outcome === '1') {
+      homeGoals = Math.floor(Math.random() * 3) + 1;
+      awayGoals = Math.floor(Math.random() * homeGoals);
+    } else if (outcome === 'X') {
+      homeGoals = Math.floor(Math.random() * 3);
+      awayGoals = homeGoals;
+    } else {
+      awayGoals = Math.floor(Math.random() * 3) + 1;
+      homeGoals = Math.floor(Math.random() * awayGoals);
+    }
+
+    const won = outcome === prediction;
+    const payout = won ? Math.floor(betAmount * oddsVal) : 0;
+    const newCoins = user.coins - betAmount + payout;
+
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        success: true,
+        won,
+        score: `${homeGoals}-${awayGoals}`,
+        outcome,
+        payout,
+        newCoins
+      });
+    });
+  });
+});
+
+app.post('/api/casino/slots', (req, res) => {
+  const { nick, bet } = req.body;
+  if (!nick || !bet) return res.status(400).json({ error: 'Missing parameters' });
+
+  const betAmount = parseInt(bet, 10);
+  if (isNaN(betAmount) || betAmount < 10 || betAmount > 500) {
+    return res.status(400).json({ error: 'Zakład musi wynosić od 10 do 500 monet' });
+  }
+
+  db.get('SELECT coins FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.coins < betAmount) return res.status(400).json({ error: 'Za mało monet' });
+
+    const symbols = ['Zygzak', 'Faraon', 'Moneta', 'Gwiazda', 'Korona'];
+    const isWin = Math.random() < 0.3; // 70% chance to lose
+    let reels = [];
+    let payoutMultiplier = 0;
+
+    if (isWin) {
+      const isJackpot = Math.random() < 0.25;
+      const winningSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+      if (isJackpot) {
+        reels = [winningSymbol, winningSymbol, winningSymbol];
+        payoutMultiplier = 8;
+      } else {
+        const otherSymbols = symbols.filter(s => s !== winningSymbol);
+        const diffSymbol = otherSymbols[Math.floor(Math.random() * otherSymbols.length)];
+        reels = [winningSymbol, winningSymbol, diffSymbol];
+        for (let i = reels.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [reels[i], reels[j]] = [reels[j], reels[i]];
+        }
+        payoutMultiplier = 2;
+      }
+    } else {
+      const shuffled = [...symbols].sort(() => Math.random() - 0.5);
+      reels = [shuffled[0], shuffled[1], shuffled[2]];
+      payoutMultiplier = 0;
+    }
+
+    const payout = betAmount * payoutMultiplier;
+    const newCoins = user.coins - betAmount + payout;
+
+    db.run('UPDATE users SET coins = ? WHERE nick = ?', [newCoins, nick], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        success: true,
+        reels,
+        win: isWin,
+        payout,
+        newCoins
       });
     });
   });
