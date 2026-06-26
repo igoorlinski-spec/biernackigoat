@@ -56,9 +56,17 @@ async function initializeDatabase() {
         active_champion TEXT DEFAULT 'Zygzak',
         unlocked_icons TEXT DEFAULT 'dalton,tusk',
         active_icon TEXT DEFAULT 'default',
-        last_daily_claim BIGINT DEFAULT 0
+        last_daily_claim BIGINT DEFAULT 0,
+        casino_xp INTEGER DEFAULT 0,
+        blackjack_wins INTEGER DEFAULT 0,
+        perfect_timings INTEGER DEFAULT 0
       )
     `);
+
+    // Add new columns to existing tables if they don't exist
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS casino_xp INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS blackjack_wins INTEGER DEFAULT 0`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS perfect_timings INTEGER DEFAULT 0`);
 
     await query(`
       CREATE TABLE IF NOT EXISTS matches (
@@ -201,7 +209,7 @@ app.get('/api/profile/:nick', async (req, res) => {
   const { nick } = req.params;
   try {
     const result = await query(
-      'SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon, last_daily_claim FROM users WHERE nick = $1',
+      'SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon, last_daily_claim, casino_xp, blackjack_wins, perfect_timings FROM users WHERE nick = $1',
       [nick]
     );
     if (result.rows.length === 0)
@@ -226,13 +234,17 @@ app.get('/api/profile/:nick', async (req, res) => {
     if (!icons.includes('dalton')) icons.push('dalton');
     if (!icons.includes('tusk')) icons.push('tusk');
 
+    const casinoXp = user.casino_xp || 0;
+    const bjWins = user.blackjack_wins || 0;
+    const perfectTimings = user.perfect_timings || 0;
+
     res.json({
       nick: user.nick,
       coins: user.coins,
       lp: user.lp,
       rank: user.rank,
       stars: user.stars || 0,
-      unlocked_characters: user.unlocked_characters.split(','),
+      unlocked_characters: user.unlocked_characters ? user.unlocked_characters.split(',') : ['Zygzak'],
       unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
       activeChampion: user.active_champion || 'Zygzak',
       unlocked_icons: icons,
@@ -240,7 +252,10 @@ app.get('/api/profile/:nick', async (req, res) => {
       lastDailyClaim: parseInt(user.last_daily_claim) || 0,
       rankedWins,
       rankedTotal,
-      history: historyResult.rows
+      history: historyResult.rows,
+      casino_xp: casinoXp,
+      blackjack_wins: bjWins,
+      perfect_timings: perfectTimings
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -250,7 +265,7 @@ app.get('/api/profile/:nick', async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const result = await query(
-      'SELECT nick, lp, rank, coins, stars, active_champion, active_icon FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100'
+      'SELECT nick, lp, rank, coins, stars, active_champion, active_icon, casino_xp, blackjack_wins, perfect_timings FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100'
     );
     res.json(result.rows);
   } catch (err) {
@@ -435,12 +450,23 @@ app.post('/api/casino/blackjack/stand', async (req, res) => {
   else if (playerScore === dealerScore) { result = 'push'; payout = game.bet; }
 
   try {
-    const userResult = await query('SELECT coins FROM users WHERE nick = $1', [nick]);
+    const userResult = await query('SELECT coins, casino_xp, blackjack_wins FROM users WHERE nick = $1', [nick]);
     if (userResult.rows.length === 0) { delete activeBJGames[nick]; return res.status(500).json({ error: 'User not found' }); }
-    const newCoins = userResult.rows[0].coins + payout;
-    await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCoins, nick]);
+    const u = userResult.rows[0];
+    const newCoins = u.coins + payout;
+
+    let newXp = u.casino_xp || 0;
+    let newBjWins = u.blackjack_wins || 0;
+    if (result === 'win') {
+      newXp += 1;
+      newBjWins += 1;
+    }
+
+    await query('UPDATE users SET coins = $1, casino_xp = $2, blackjack_wins = $3 WHERE nick = $4',
+      [newCoins, newXp, newBjWins, nick]);
     delete activeBJGames[nick];
-    res.json({ success: true, status: result, playerHand: game.playerHand, dealerHand: game.dealerHand, playerScore, dealerScore, payout, newCoins });
+    res.json({ success: true, status: result, playerHand: game.playerHand, dealerHand: game.dealerHand,
+      playerScore, dealerScore, payout, newCoins, newXp, newBjWins });
   } catch (err) {
     delete activeBJGames[nick];
     res.status(500).json({ error: err.message });
@@ -463,7 +489,7 @@ app.post('/api/casino/roulette', async (req, res) => {
     return res.status(400).json({ error: 'Zakład musi wynosić od 10 do 1000 monet' });
 
   try {
-    const result = await query('SELECT coins FROM users WHERE nick = $1', [nick]);
+    const result = await query('SELECT coins, casino_xp FROM users WHERE nick = $1', [nick]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     if (result.rows[0].coins < totalBet) return res.status(400).json({ error: 'Za mało monet' });
 
@@ -484,8 +510,10 @@ app.post('/api/casino/roulette', async (req, res) => {
     }
 
     const newCoins = result.rows[0].coins - totalBet + payout;
-    await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCoins, nick]);
-    res.json({ success: true, number: winNumber, color: winColor, payout, totalBet, newCoins });
+    let newXp = result.rows[0].casino_xp || 0;
+    if (payout > 0) newXp += 1;
+    await query('UPDATE users SET coins = $1, casino_xp = $2 WHERE nick = $3', [newCoins, newXp, nick]);
+    res.json({ success: true, number: winNumber, color: winColor, payout, totalBet, newCoins, newXp });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -543,7 +571,7 @@ app.post('/api/casino/slots', async (req, res) => {
     return res.status(400).json({ error: 'Zakład musi wynosić od 10 do 500 monet' });
 
   try {
-    const result = await query('SELECT coins FROM users WHERE nick = $1', [nick]);
+    const result = await query('SELECT coins, casino_xp FROM users WHERE nick = $1', [nick]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     if (result.rows[0].coins < betAmount) return res.status(400).json({ error: 'Za mało monet' });
 
@@ -575,8 +603,10 @@ app.post('/api/casino/slots', async (req, res) => {
 
     const payout = betAmount * payoutMultiplier;
     const newCoins = result.rows[0].coins - betAmount + payout;
-    await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCoins, nick]);
-    res.json({ success: true, reels, win: isWin, payout, newCoins });
+    let newXp = result.rows[0].casino_xp || 0;
+    if (isWin) newXp += 1;
+    await query('UPDATE users SET coins = $1, casino_xp = $2 WHERE nick = $3', [newCoins, newXp, nick]);
+    res.json({ success: true, reels, win: isWin, payout, newCoins, newXp });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -657,6 +687,35 @@ app.post('/api/kanapa/reward', async (req, res) => {
     const newCoins = (result.rows[0].coins || 0) + parseInt(coins);
     await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCoins, nick]);
     res.json({ success: true, newCoins });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Perfect timing tracker (for TIMI badge)
+app.post('/api/perfect-timing', async (req, res) => {
+  const { nick } = req.body;
+  if (!nick) return res.status(400).json({ error: 'Nick required' });
+  try {
+    const result = await query('SELECT perfect_timings FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const newPT = (result.rows[0].perfect_timings || 0) + 1;
+    await query('UPDATE users SET perfect_timings = $1 WHERE nick = $2', [newPT, nick]);
+    res.json({ success: true, perfect_timings: newPT });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get casino XP bonus for current user (every 10 XP = +2% win bonus)
+app.get('/api/casino/xp-bonus/:nick', async (req, res) => {
+  const { nick } = req.params;
+  try {
+    const result = await query('SELECT casino_xp FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const xp = result.rows[0].casino_xp || 0;
+    const bonusTiers = Math.floor(xp / 10);
+    const bonusPercent = bonusTiers * 2;
+    res.json({ casino_xp: xp, bonus_percent: bonusPercent });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

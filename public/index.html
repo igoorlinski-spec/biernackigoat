@@ -679,6 +679,12 @@
       100% { transform: scale(1); }
     }
 
+    @keyframes badge-pulse {
+      0% { box-shadow: 0 0 10px rgba(200,100,255,0.8), 0 0 25px rgba(200,100,255,0.4); }
+      50% { box-shadow: 0 0 20px rgba(200,100,255,1), 0 0 50px rgba(200,100,255,0.6), 0 0 80px rgba(200,100,255,0.2); }
+      100% { box-shadow: 0 0 10px rgba(200,100,255,0.8), 0 0 25px rgba(200,100,255,0.4); }
+    }
+
     .stopwatch-status {
       font-size: 0.9rem;
       text-transform: uppercase;
@@ -1895,6 +1901,19 @@
             </div>
           </div>
           
+          <!-- Casino XP Bar -->
+          <div style="margin-top:18px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,215,0,0.2); border-radius:8px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span style="color:var(--gold-primary); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">Casino XP</span>
+              <span id="prof-casino-xp" style="color:#fff; font-size:0.85rem; font-weight:bold;">0 XP</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.1); border-radius:20px; height:8px; overflow:hidden;">
+              <div id="prof-xp-bar" style="height:100%; background:linear-gradient(90deg,#ff9800,#ffd700); border-radius:20px; width:0%; transition:width 0.5s ease;"></div>
+            </div>
+            <div style="margin-top:5px; font-size:0.75rem; color:var(--text-muted);">Co 10 XP = <span style="color:#ffd700;">+2% szans na wygraną w kasynie</span></div>
+            <div id="prof-xp-bonus" style="margin-top:3px; font-size:0.8rem; color:#4fc3f7;"></div>
+          </div>
+
           <!-- Icon selector -->
           <div class="icon-selector-section" style="margin-top: 25px; border-top: 1px solid rgba(200, 170, 110, 0.2); padding-top: 20px;">
             <h4 style="color: var(--gold-primary); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 15px;">Wybierz ikonę profilu</h4>
@@ -1904,11 +1923,23 @@
           </div>
         </div>
 
-        <!-- Match History -->
-        <div class="history-card">
-          <h3>Historia meczów</h3>
-          <div class="history-list" id="prof-history-list">
-            <!-- Dynamically populated match history -->
+        <!-- Right column: History + Quests -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+
+          <!-- QUESTY / ODZNAKI -->
+          <div style="background:rgba(10,10,20,0.95); border:1px solid rgba(200,170,110,0.25); border-radius:10px; padding:22px;">
+            <h3 style="color:var(--gold-primary); font-family:var(--font-title); font-size:1.1rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px;">&#127942; Odznaki &amp; Questy</h3>
+            <div id="prof-badges" style="display:flex; flex-direction:column; gap:12px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Match History -->
+          <div class="history-card">
+            <h3>Historia meczów</h3>
+            <div class="history-list" id="prof-history-list">
+              <!-- Dynamically populated match history -->
+            </div>
           </div>
         </div>
       </div>
@@ -1928,6 +1959,7 @@
               <th>Postać</th>
               <th>Monety</th>
               <th>Gwiazdy</th>
+              <th>Odznaki</th>
             </tr>
           </thead>
           <tbody id="leaderboard-body">
@@ -2505,6 +2537,21 @@
           nick: currentUser.nick,
           timeDiff: parseFloat(signedDiff.toFixed(4))
         });
+
+        // Perfect timing check - error <= 0.05s = TIMI badge progress
+        if (Math.abs(signedDiff) <= 0.05 && currentUser) {
+          fetch('/api/perfect-timing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nick: currentUser.nick })
+          }).then(r => r.json()).then(d => {
+            if (d.perfect_timings !== undefined) {
+              currentUser.perfect_timings = d.perfect_timings;
+              showToast(`⚡ IDEALNE TRAFIENIE! (${d.perfect_timings}/40 do odznaki TIMI)`);
+            }
+          }).catch(() => {});
+        }
+
       }
     }
 
@@ -3157,6 +3204,97 @@
     }
 
     // Profile & History Fetching
+    // Badge definitions
+    const BADGES = [
+      {
+        id: 'nowicjusz_bj',
+        name: 'Nowicjusz Blackjack',
+        desc: '10 wygranych w Blackjacku',
+        icon: '🎗️',
+        required: 10,
+        stat: 'blackjack_wins',
+        color: '#c0c0c0',
+        glow: 'rgba(192,192,192,0.6)',
+        tier: 'silver'
+      },
+      {
+        id: 'boss_bj',
+        name: 'Boss Blackjack',
+        desc: '30 wygranych w Blackjacku',
+        icon: '🏆',
+        required: 30,
+        stat: 'blackjack_wins',
+        color: '#ffd700',
+        glow: 'rgba(255,215,0,0.7)',
+        tier: 'gold'
+      },
+      {
+        id: 'goat_bj',
+        name: 'GOAT Blackjack',
+        desc: '100 wygranych w Blackjacku',
+        icon: '🐐',
+        required: 100,
+        stat: 'blackjack_wins',
+        color: '#b9f2ff',
+        glow: 'rgba(100,220,255,0.9)',
+        tier: 'diamond'
+      },
+      {
+        id: 'timi',
+        name: 'TIMI',
+        desc: '40 idealnych trafień stopera (błąd ≤0.05s)',
+        icon: '⚡',
+        required: 40,
+        stat: 'perfect_timings',
+        color: '#e0aaff',
+        glow: 'rgba(200,100,255,1)',
+        tier: 'ultra'
+      }
+    ];
+
+    function renderBadges(data) {
+      const container = document.getElementById('prof-badges');
+      if (!container) return;
+      const bjWins = data.blackjack_wins || 0;
+      const pt = data.perfect_timings || 0;
+
+      const getVal = (stat) => stat === 'blackjack_wins' ? bjWins : pt;
+
+      container.innerHTML = BADGES.map(b => {
+        const val = getVal(b.stat);
+        const earned = val >= b.required;
+        const pct = Math.min(100, Math.round((val / b.required) * 100));
+
+        const glowStyle = earned
+          ? (b.tier === 'ultra'
+            ? `box-shadow: 0 0 12px ${b.glow}, 0 0 30px ${b.glow}, 0 0 60px rgba(200,100,255,0.4); animation: badge-pulse 2s infinite;`
+            : `box-shadow: 0 0 10px ${b.glow}, 0 0 20px ${b.glow};`)
+          : '';
+        const borderColor = earned ? b.color : 'rgba(255,255,255,0.1)';
+        const bgColor = earned
+          ? (b.tier === 'ultra' ? 'linear-gradient(135deg,#1a0030,#0d0020)' : 'linear-gradient(135deg,rgba(0,0,0,0.8),rgba(20,20,30,0.9))')
+          : 'rgba(0,0,0,0.4)';
+
+        return `
+          <div style="background:${bgColor}; border:2px solid ${borderColor}; border-radius:10px; padding:14px 16px; ${glowStyle} transition: all 0.3s;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+              <span style="font-size:1.6rem; ${earned && b.tier==='ultra' ? 'filter:drop-shadow(0 0 8px #bf5fff);' : ''}">${b.icon}</span>
+              <div style="flex:1;">
+                <div style="font-weight:bold; font-size:0.95rem; color:${earned ? b.color : '#888'}; font-family:var(--font-title); letter-spacing:1px;">${b.name}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${b.desc}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:0.85rem; font-weight:bold; color:${earned ? b.color : '#666'}">${val} / ${b.required}</div>
+                ${earned ? `<div style="font-size:0.7rem; color:${b.color}; letter-spacing:1px;">&#10003; ZDOBYTA</div>` : ''}
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); border-radius:20px; height:6px; overflow:hidden;">
+              <div style="height:100%; width:${pct}%; background:${earned ? `linear-gradient(90deg,${b.color},#fff)` : 'linear-gradient(90deg,#444,#666)'}; border-radius:20px; transition:width 0.6s ease;"></div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
     async function fetchUserData() {
       if (!currentUser) return;
       try {
@@ -3170,6 +3308,9 @@
           currentUser.unlocked_characters = data.unlocked_characters;
           currentUser.unlocked_icons = data.unlocked_icons;
           currentUser.activeIcon = data.activeIcon;
+          currentUser.casino_xp = data.casino_xp || 0;
+          currentUser.blackjack_wins = data.blackjack_wins || 0;
+          currentUser.perfect_timings = data.perfect_timings || 0;
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
 
@@ -3190,6 +3331,18 @@
           document.getElementById('prof-coins').innerText = data.coins;
           document.getElementById('prof-games').innerText = data.history.length;
 
+          // Casino XP
+          const xp = data.casino_xp || 0;
+          const bonusTiers = Math.floor(xp / 10);
+          const bonusPct = bonusTiers * 2;
+          const xpInTier = xp % 10;
+          const xpEl = document.getElementById('prof-casino-xp');
+          const xpBar = document.getElementById('prof-xp-bar');
+          const xpBonus = document.getElementById('prof-xp-bonus');
+          if (xpEl) xpEl.innerText = `${xp} XP`;
+          if (xpBar) xpBar.style.width = `${(xpInTier / 10) * 100}%`;
+          if (xpBonus) xpBonus.innerText = bonusPct > 0 ? `🔥 Aktualny bonus: +${bonusPct}% szans na wygraną!` : 'Zdobywaj XP w kasynie!';
+
           // Winratio
           const winratioEl = document.getElementById('prof-winratio');
           if (winratioEl) {
@@ -3200,6 +3353,9 @@
               winratioEl.innerText = '0%';
             }
           }
+
+          // Render badges
+          renderBadges(data);
 
           // Render unlocked icons selector
           const iconsListContainer = document.getElementById('profile-unlocked-icons-list');
@@ -3275,8 +3431,19 @@
           data.forEach((row, index) => {
             let avatarHtml = `<i class="fa-solid fa-user-shield" style="margin-right: 8px; color: var(--gold-primary);"></i>`;
             if (row.active_icon && row.active_icon !== 'default') {
-              avatarHtml = `<img src="/assets/images/${row.active_icon}.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px; vertical-align: middle; border: 1px solid var(--gold-primary);">`;
+              avatarHtml = `<img src="/assets/images/${row.active_icon}.png" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 8px; vertical-align: middle; border: 1px solid var(--gold-primary);">`;  
             }
+
+            // Build badge icons for leaderboard
+            const bjWins = row.blackjack_wins || 0;
+            const pt = row.perfect_timings || 0;
+            let badgeHtml = '';
+            if (bjWins >= 10) badgeHtml += `<span title="Nowicjusz Blackjack" style="font-size:1rem; filter:drop-shadow(0 0 4px #c0c0c0);">🎗️</span>`;
+            if (bjWins >= 30) badgeHtml += `<span title="Boss Blackjack" style="font-size:1rem; filter:drop-shadow(0 0 4px #ffd700);">🏆</span>`;
+            if (bjWins >= 100) badgeHtml += `<span title="GOAT Blackjack" style="font-size:1rem; filter:drop-shadow(0 0 6px #b9f2ff);">🐐</span>`;
+            if (pt >= 40) badgeHtml += `<span title="TIMI - Ultra" style="font-size:1rem; animation:badge-pulse 1.5s infinite; filter:drop-shadow(0 0 8px #bf5fff);">&#9889;</span>`;
+            if (!badgeHtml) badgeHtml = '<span style="color:#444">-</span>';
+
             tbody.innerHTML += `
               <tr>
                 <td class="rank-cell">#${index + 1}</td>
@@ -3286,6 +3453,7 @@
                 <td style="color: var(--cyan-primary); font-weight: 600;">${row.active_champion || 'Zygzak'}</td>
                 <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
                 <td><i class="fa-solid fa-star" style="color: #ffd700;"></i> ${row.stars || 0}</td>
+                <td>${badgeHtml}</td>
               </tr>
             `;
           });
