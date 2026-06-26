@@ -619,9 +619,7 @@ app.post('/api/trades/cancel', async (req, res) => {
     if (userRes.rows.length > 0) {
       const user = userRes.rows[0];
       let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
-      if (!icons.includes(trade.offered_icon)) {
-        icons.push(trade.offered_icon);
-      }
+      icons.push(trade.offered_icon);
       await query('UPDATE users SET unlocked_icons = $1 WHERE nick = $2', [icons.join(','), nick]);
     }
     
@@ -667,10 +665,8 @@ app.post('/api/trades/accept', async (req, res) => {
       const newBuyerCoins = buyerUser.coins - trade.requested_coins;
       const newCreatorCoins = creatorUser.coins + trade.requested_coins;
       
-      // Add offered icon to buyer
-      if (!buyerIcons.includes(trade.offered_icon)) {
-        buyerIcons.push(trade.offered_icon);
-      }
+      // Add offered icon to buyer (unconditionally, support duplicates)
+      buyerIcons.push(trade.offered_icon);
       
       await query('UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3', [newBuyerCoins, buyerIcons.join(','), buyer]);
       await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCreatorCoins, trade.creator]);
@@ -681,22 +677,22 @@ app.post('/api/trades/accept', async (req, res) => {
       }
       
       // Process icons exchange
-      // Remove requested icon from buyer
-      buyerIcons = buyerIcons.filter(i => i !== trade.requested_icon);
-      // Give offered icon to buyer
-      if (!buyerIcons.includes(trade.offered_icon)) {
-        buyerIcons.push(trade.offered_icon);
+      // Remove only ONE copy of requested icon from buyer
+      const idx = buyerIcons.indexOf(trade.requested_icon);
+      if (idx > -1) {
+        buyerIcons.splice(idx, 1);
       }
       
-      // Give requested icon to creator
-      if (!creatorIcons.includes(trade.requested_icon)) {
-        creatorIcons.push(trade.requested_icon);
-      }
+      // Give offered icon to buyer (unconditionally, support duplicates)
+      buyerIcons.push(trade.offered_icon);
       
-      // If buyer's active icon was the requested one, reset it to default
+      // Give requested icon to creator (unconditionally, support duplicates)
+      creatorIcons.push(trade.requested_icon);
+      
+      // If buyer's active icon was the requested one and they have no copies left, reset it to default
       const buyerActiveRes = await query('SELECT active_icon FROM users WHERE nick = $1', [buyer]);
       let buyerActive = buyerActiveRes.rows[0]?.active_icon || 'default';
-      if (buyerActive === trade.requested_icon) {
+      if (buyerActive === trade.requested_icon && !buyerIcons.includes(trade.requested_icon)) {
         buyerActive = 'default';
       }
       
@@ -708,6 +704,7 @@ app.post('/api/trades/accept', async (req, res) => {
     await query("UPDATE trades SET status = 'completed' WHERE id = $1", [tradeId]);
     
     io.emit('trades_updated');
+    io.to(trade.creator).emit('trade_accepted');
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

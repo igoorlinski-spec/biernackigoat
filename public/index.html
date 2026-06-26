@@ -3936,6 +3936,11 @@
           loadTrades();
         }
       });
+
+      socket.on('trade_accepted', () => {
+        fetchUserData();
+        showToast('Jedna z Twoich ofert wymiany została zaakceptowana!');
+      });
     }
 
     function logout() {
