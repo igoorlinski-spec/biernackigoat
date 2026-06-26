@@ -667,12 +667,14 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
 
         db.serialize(() => {
           // Winner gets +100 coins and +3 stars
-          db.run('UPDATE users SET coins = coins + ?, stars = stars + 3 WHERE nick = ?', [rewardW, winnerNick], () => {
+          db.run('UPDATE users SET coins = COALESCE(coins, 0) + ?, stars = COALESCE(stars, 0) + 3 WHERE nick = ?', [rewardW, winnerNick], (err) => {
+            if (err) console.error('Error updating draft winner:', err);
             const sW = onlineUsers[winnerNick];
             if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
           });
           // Loser gets +0 coins (0 stars)
-          db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick], () => {
+          db.run('UPDATE users SET coins = COALESCE(coins, 0) + ? WHERE nick = ?', [rewardL, loserNick], (err) => {
+            if (err) console.error('Error updating draft loser:', err);
             const sL = onlineUsers[loserNick];
             if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
           });
@@ -684,9 +686,11 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
 
         // Winner gets +200 coins and +5 stars
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
+          if (err) console.error('Error fetching ranked winner details:', err);
           if (winUser) {
             const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 200, stars = stars + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = COALESCE(coins, 0) + 200, stars = COALESCE(stars, 0) + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], (err) => {
+              if (err) console.error('Error updating ranked winner:', err);
               const sW = onlineUsers[winnerNick];
               if (sW) {
                 io.to(sW).emit('game_over', {
@@ -705,9 +709,11 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
 
         // Loser gets +0 coins (0 stars)
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
+          if (err) console.error('Error fetching ranked loser details:', err);
           if (loseUser) {
             const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 0 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = COALESCE(coins, 0) + 0 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], (err) => {
+              if (err) console.error('Error updating ranked loser:', err);
               const sL = onlineUsers[loserNick];
               if (sL) {
                 io.to(sL).emit('game_over', {
@@ -730,8 +736,8 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const isHumanWinner = winnerNick === humanPlayer;
         const coinsReward = isHumanWinner ? 50 : 10;
 
-        db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [coinsReward, humanPlayer], function(err) {
-          if (err) console.error(err);
+        db.run('UPDATE users SET coins = COALESCE(coins, 0) + ? WHERE nick = ?', [coinsReward, humanPlayer], function(err) {
+          if (err) console.error('Error updating practice stats:', err);
           
           const sHuman = onlineUsers[humanPlayer];
           if (sHuman) {
