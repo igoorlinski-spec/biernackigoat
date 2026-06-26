@@ -464,10 +464,10 @@ app.post('/api/claim-paid-chest', async (req, res) => {
 
     const roll = Math.random() * 100;
     if (roll <= 1.0) {
-      rewardIcon = 'irys'; // Starka
+      rewardIcon = 'irys'; // Stary Irys
       isLegendary = true;
     } else {
-      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha', 'stary_irys'];
+      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha', 'starka'];
       rewardIcon = pool[Math.floor(Math.random() * pool.length)];
     }
 
@@ -517,10 +517,10 @@ app.post('/api/claim-fame-chest', async (req, res) => {
       rewardIcon = 'young_maga';
       isLegendary = true;
     } else if (roll <= 2.0) {
-      rewardIcon = 'irys'; // Starka
+      rewardIcon = 'irys'; // Stary Irys
       isLegendary = true;
     } else {
-      const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];
+      const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski', 'starka'];
       rewardIcon = pool[Math.floor(Math.random() * pool.length)];
     }
 
