@@ -3915,7 +3915,7 @@
     }
 
     // --- 2. ROULETTE LOGIC ---
-    let rouletteSpinning = false;
+    rouletteSpinning = false;
 
     function resetRouletteUI() {
       if (rouletteSpinning) return;
@@ -4259,6 +4259,7 @@
         clearInterval(spinInterval);
         slotsSpinning = false;
         document.getElementById('slots-spin-btn').disabled = false;
+      }
     }
   </script>
 
