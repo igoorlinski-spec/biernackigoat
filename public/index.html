@@ -1366,6 +1366,7 @@
       <button class="tab-btn active" onclick="switchTab('lobby')">Lobby</button>
       <button class="tab-btn" onclick="switchTab('training')">Trening</button>
       <button class="tab-btn pharaoh-event-tab-glowing" onclick="switchTab('pharaoh-event')">Event Faraon <i class="fa-solid fa-crown"></i></button>
+      <button class="tab-btn" onclick="switchTab('daily-chest')">Skrzynka <i class="fa-solid fa-gift"></i></button>
       <button class="tab-btn" onclick="switchTab('shop')">Sklep</button>
       <button class="tab-btn" onclick="switchTab('profile')">Profil</button>
       <button class="tab-btn" onclick="switchTab('leaderboard')">Ranking</button>
@@ -1690,6 +1691,35 @@
             <p><strong>Postać:</strong> Tony Soprano<br><strong>Trudność:</strong> Najtrudniejszy przeciwnik. Trafia z zabójczą dokładnością i może nałożyć na Ciebie 1 sekundę kary.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
           </div>
           <button class="mode-btn" style="border-color: #f44336; color: #f44336;" onclick="startPractice('hard')">Graj (Trudny)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Chest View -->
+    <div id="daily-chest-view" class="view">
+      <div class="lobby-header">
+        <h2 style="color: var(--gold-primary); text-shadow: 0 0 15px rgba(200,170,110,0.4);"><i class="fa-solid fa-gift"></i> Codzienna skrzynka</h2>
+        <p>Odbierz darmowe monety raz na 24 godziny! Losuj nagrodę w stylu otwierania skrzynek CS:GO.</p>
+      </div>
+
+      <div class="chest-container" style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(0,0,0,0.4); border: 2px solid var(--gold-primary); border-radius: 8px; padding: 25px; text-align: center; box-shadow: 0 0 20px rgba(200,170,110,0.15);">
+        
+        <!-- CS:GO Roulette Viewport -->
+        <div class="roulette-viewport" style="position: relative; width: 100%; height: 120px; background: #070f19; border: 1px solid rgba(200, 170, 110, 0.3); border-radius: 4px; overflow: hidden; margin-bottom: 25px;">
+          <!-- Center vertical needle -->
+          <div class="roulette-needle" style="position: absolute; left: 50%; top: 0; width: 4px; height: 100%; background: #ffd700; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 15px #ffd700; pointer-events: none;"></div>
+          <!-- Roulette tape -->
+          <div class="roulette-tape" id="roulette-tape" style="display: flex; gap: 8px; position: absolute; left: 0; top: 10px; height: 100px; transition: transform 6s cubic-bezier(0.08, 0.8, 0.12, 1); will-change: transform;">
+            <!-- Dummy items will populate here -->
+          </div>
+        </div>
+
+        <!-- Open button & cooldown timer -->
+        <div class="chest-action-box">
+          <button class="mode-btn" id="claim-chest-btn" style="border-color: var(--gold-primary); color: var(--gold-primary); font-size: 1.2rem; padding: 12px 35px;" onclick="openDailyChest()">Otwórz Skrzynię</button>
+          <div id="chest-cooldown-text" style="margin-top: 15px; font-size: 0.95rem; color: var(--text-muted); font-weight: 600;">
+            Sprawdzanie dostępności...
+          </div>
         </div>
       </div>
     </div>
@@ -2042,17 +2072,17 @@
     // Tab switching
     function switchTab(tab) {
       activeTab = tab;
-      const buttons = document.querySelectorAll('.tab-btn');
-      buttons.forEach(btn => btn.classList.remove('active'));
-      
       // Mark active header tab button
-      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')));
+      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')));
       if (clickedBtn) clickedBtn.classList.add('active');
 
       if (tab === 'lobby') {
         switchView('lobby-view');
       } else if (tab === 'training') {
         switchView('training-view');
+      } else if (tab === 'daily-chest') {
+        switchView('daily-chest-view');
+        updateChestCooldownUI();
       } else if (tab === 'pharaoh-event') {
         switchView('pharaoh-event-view');
       } else if (tab === 'shop') {
@@ -2542,6 +2572,170 @@
       } catch (err) {
         console.error(err);
         showToast('Błąd sieci.');
+      }
+    }
+
+    // Daily Chest (Codzienna skrzynka) CS:GO Case Opening
+    let rouletteSpinning = false;
+    let dailyChestTimerInterval = null;
+
+    function getCSGOColor(val) {
+      if (val >= 100) return 'linear-gradient(135deg, #8a6f27, #e3c16f)'; // Golden
+      if (val >= 80) return 'linear-gradient(135deg, #7a1f1d, #c53a38)'; // Red
+      if (val >= 55) return 'linear-gradient(135deg, #741d7c, #b338be)'; // Pink
+      if (val >= 30) return 'linear-gradient(135deg, #37187a, #5b33b9)'; // Purple
+      return 'linear-gradient(135deg, #18427a, #2a68b9)'; // Blue
+    }
+
+    function updateChestCooldownUI() {
+      const btn = document.getElementById('claim-chest-btn');
+      const text = document.getElementById('chest-cooldown-text');
+      const tape = document.getElementById('roulette-tape');
+      if (!btn || !text) return;
+
+      if (tape && tape.innerHTML === '') {
+        resetRouletteTapePreview();
+      }
+
+      const now = Date.now();
+      const lastClaim = currentUser.lastDailyClaim || 0;
+      const cooldown = 24 * 60 * 60 * 1000;
+
+      if (dailyChestTimerInterval) clearInterval(dailyChestTimerInterval);
+
+      if (now - lastClaim >= cooldown) {
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+        text.innerText = 'Skrzynia jest gotowa do otwarcia!';
+        text.style.color = '#4caf50';
+      } else {
+        btn.disabled = true;
+        btn.classList.add('disabled');
+        text.style.color = 'var(--text-muted)';
+        
+        const updateTimer = () => {
+          const current = Date.now();
+          const remaining = cooldown - (current - lastClaim);
+          if (remaining <= 0) {
+            btn.disabled = false;
+            btn.classList.remove('disabled');
+            text.innerText = 'Skrzynia jest gotowa do otwarcia!';
+            text.style.color = '#4caf50';
+            clearInterval(dailyChestTimerInterval);
+          } else {
+            const hrs = Math.floor(remaining / (3600 * 1000)).toString().padStart(2, '0');
+            const mins = Math.floor((remaining % (3600 * 1000)) / (60 * 1000)).toString().padStart(2, '0');
+            const secs = Math.floor((remaining % (60 * 1000)) / 1000).toString().padStart(2, '0');
+            text.innerText = `Kolejna skrzynia dostępna za: ${hrs}h ${mins}m ${secs}s`;
+          }
+        };
+
+        updateTimer();
+        dailyChestTimerInterval = setInterval(updateTimer, 1000);
+      }
+    }
+
+    function resetRouletteTapePreview() {
+      const tape = document.getElementById('roulette-tape');
+      if (!tape) return;
+      tape.style.transition = 'none';
+      tape.style.transform = 'translateX(0px)';
+      tape.innerHTML = '';
+      
+      for (let i = 0; i < 15; i++) {
+        const val = ((i * 5) % 100) + 5;
+        const color = getCSGOColor(val);
+        tape.innerHTML += `
+          <div class="roulette-card" style="width: 100px; height: 100px; flex-shrink: 0; border-radius: 4px; background: ${color}; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); font-family: var(--font-title);">
+            <i class="fa-solid fa-coins" style="font-size: 1.8rem; margin-bottom: 5px; color: #ffd700;"></i>
+            <span style="font-size: 1.2rem; font-weight: bold; color: #fff;">+${val}</span>
+          </div>
+        `;
+      }
+    }
+
+    async function openDailyChest() {
+      if (rouletteSpinning) return;
+      if (!currentUser) return;
+
+      const btn = document.getElementById('claim-chest-btn');
+      const text = document.getElementById('chest-cooldown-text');
+      const tape = document.getElementById('roulette-tape');
+      if (!btn || !tape) return;
+
+      rouletteSpinning = true;
+      btn.disabled = true;
+      btn.classList.add('disabled');
+      text.innerText = 'Losowanie w toku...';
+
+      try {
+        const response = await fetch('/api/claim-daily-chest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick })
+        });
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          rouletteSpinning = false;
+          updateChestCooldownUI();
+          return;
+        }
+
+        const winValue = data.rewardCoins;
+        
+        tape.style.transition = 'none';
+        tape.style.transform = 'translateX(0px)';
+        tape.innerHTML = '';
+        
+        const cardWidth = 100;
+        const gap = 8;
+        const totalCards = 60;
+        const winIndex = 45;
+        
+        for (let i = 0; i < totalCards; i++) {
+          let val = 0;
+          if (i === winIndex) {
+            val = winValue;
+          } else {
+            val = (Math.floor(Math.random() * 20) + 1) * 5;
+          }
+          const color = getCSGOColor(val);
+          tape.innerHTML += `
+            <div class="roulette-card" style="width: ${cardWidth}px; height: 100px; flex-shrink: 0; border-radius: 4px; background: ${color}; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); font-family: var(--font-title);">
+              <i class="fa-solid fa-coins" style="font-size: 1.8rem; margin-bottom: 5px; color: #ffd700;"></i>
+              <span style="font-size: 1.2rem; font-weight: bold; color: #fff;">+${val}</span>
+            </div>
+          `;
+        }
+
+        tape.offsetHeight; // Force reflow
+
+        const viewportWidth = tape.parentElement.clientWidth;
+        const itemOffset = winIndex * (cardWidth + gap) + cardWidth / 2;
+        const randOffset = Math.floor(Math.random() * (cardWidth - 20)) - (cardWidth / 2 - 10);
+        const targetX = - (itemOffset + randOffset - viewportWidth / 2);
+
+        tape.style.transition = 'transform 6s cubic-bezier(0.08, 0.8, 0.12, 1)';
+        tape.style.transform = 'translateX(' + targetX + 'px)';
+
+        setTimeout(() => {
+          rouletteSpinning = false;
+          currentUser.coins = data.newCoins;
+          currentUser.lastDailyClaim = data.lastDailyClaim;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          showToast(`Gratulacje! Wylosowałeś +${winValue} Monet!`);
+          updateChestCooldownUI();
+        }, 6100);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+        rouletteSpinning = false;
+        updateChestCooldownUI();
       }
     }
 

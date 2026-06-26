@@ -44,7 +44,8 @@ function initializeDatabase() {
         unlocked_skills TEXT DEFAULT '',
         active_champion TEXT DEFAULT 'Zygzak',
         unlocked_icons TEXT DEFAULT '',
-        active_icon TEXT DEFAULT 'default'
+        active_icon TEXT DEFAULT 'default',
+        last_daily_claim INTEGER DEFAULT 0
       )
     `);
 
@@ -70,6 +71,11 @@ function initializeDatabase() {
 
     // Ensure active_icon column exists for older database files
     db.run(`ALTER TABLE users ADD COLUMN active_icon TEXT DEFAULT 'default'`, (err) => {
+      // Ignore if column already exists
+    });
+
+    // Ensure last_daily_claim column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN last_daily_claim INTEGER DEFAULT 0`, (err) => {
       // Ignore if column already exists
     });
 
@@ -192,7 +198,8 @@ app.post('/api/login', (req, res) => {
         unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
         activeChampion: user.active_champion || 'Zygzak',
         unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
-        activeIcon: user.active_icon || 'default'
+        activeIcon: user.active_icon || 'default',
+        lastDailyClaim: user.last_daily_claim || 0
       });
     });
   });
@@ -200,7 +207,7 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/profile/:nick', (req, res) => {
   const { nick } = req.params;
-  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon FROM users WHERE nick = ?', [nick], (err, user) => {
+  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon, last_daily_claim FROM users WHERE nick = ?', [nick], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'Player not found' });
 
@@ -233,6 +240,7 @@ app.get('/api/profile/:nick', (req, res) => {
               activeChampion: user.active_champion || 'Zygzak',
               unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
               activeIcon: user.active_icon || 'default',
+              lastDailyClaim: user.last_daily_claim || 0,
               rankedWins,
               rankedTotal,
               history: matches
@@ -297,6 +305,49 @@ app.post('/api/select-icon', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true, activeIcon: iconName });
     });
+  });
+});
+
+app.post('/api/claim-daily-chest', (req, res) => {
+  const { nick } = req.body;
+  if (!nick) return res.status(400).json({ error: 'Nick is required' });
+
+  db.get('SELECT coins, last_daily_claim FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = Date.now();
+    const lastClaim = user.last_daily_claim || 0;
+    const cooldown = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+    if (now - lastClaim < cooldown) {
+      const timeLeft = cooldown - (now - lastClaim);
+      return res.status(400).json({ error: 'Cooldown active', timeLeft });
+    }
+
+    // Generate random reward (increments of 5 from 5 to 100)
+    const rewards = [];
+    for (let i = 5; i <= 100; i += 5) {
+      rewards.push(i);
+    }
+    const rewardIndex = Math.floor(Math.random() * rewards.length);
+    const rewardCoins = rewards[rewardIndex];
+
+    const newCoins = (user.coins || 0) + rewardCoins;
+
+    db.run(
+      'UPDATE users SET coins = ?, last_daily_claim = ? WHERE nick = ?',
+      [newCoins, now, nick],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({
+          success: true,
+          rewardCoins,
+          newCoins,
+          lastDailyClaim: now
+        });
+      }
+    );
   });
 });
 
