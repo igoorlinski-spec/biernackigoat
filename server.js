@@ -466,8 +466,11 @@ app.post('/api/claim-paid-chest', async (req, res) => {
     if (roll <= 1.0) {
       rewardIcon = 'irys'; // Stary Irys
       isLegendary = true;
+    } else if (roll <= 2.0) {
+      rewardIcon = 'starka';
+      isLegendary = true;
     } else {
-      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha', 'starka'];
+      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha'];
       rewardIcon = pool[Math.floor(Math.random() * pool.length)];
     }
 
@@ -519,8 +522,11 @@ app.post('/api/claim-fame-chest', async (req, res) => {
     } else if (roll <= 2.0) {
       rewardIcon = 'irys'; // Stary Irys
       isLegendary = true;
+    } else if (roll <= 3.0) {
+      rewardIcon = 'starka';
+      isLegendary = true;
     } else {
-      const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski', 'starka'];
+      const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];
       rewardIcon = pool[Math.floor(Math.random() * pool.length)];
     }
 
@@ -757,6 +763,74 @@ app.post('/api/trades/accept', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+app.post('/api/trades/recycle', async (req, res) => {
+  const { nick, selectedIcons } = req.body;
+  if (!nick || !selectedIcons || !Array.isArray(selectedIcons) || selectedIcons.length !== 10) {
+    return res.status(400).json({ error: 'Musisz wybrać dokładnie 10 ikon do recyklingu.' });
+  }
+
+  try {
+    const userRes = await query('SELECT coins, unlocked_icons, active_icon, unlocked_characters FROM users WHERE nick = $1', [nick]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'Użytkownik nie istnieje.' });
+    const user = userRes.rows[0];
+
+    let ownedIcons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    
+    // Validate owned icons
+    let tempOwned = [...ownedIcons];
+    for (const icon of selectedIcons) {
+      const idx = tempOwned.indexOf(icon);
+      if (idx === -1) {
+        return res.status(400).json({ error: `Nie posiadasz wystarczającej liczby kopii ikony: ${icon}` });
+      }
+      tempOwned.splice(idx, 1);
+    }
+
+    // Deduct the icons
+    ownedIcons = tempOwned;
+
+    // Check active icon
+    let activeIcon = user.active_icon || 'default';
+    if (activeIcon !== 'default' && !ownedIcons.includes(activeIcon)) {
+      activeIcon = 'default';
+    }
+
+    // Roll reward
+    const rand = Math.random();
+    let rewardType = ''; // 'dushane' or 'coin'
+    let newCoins = user.coins;
+    let characters = user.unlocked_characters ? user.unlocked_characters.split(',') : ['Zygzak'];
+
+    if (rand < 0.04) {
+      rewardType = 'dushane';
+      if (!characters.includes('Dushane')) {
+        characters.push('Dushane');
+      }
+    } else {
+      rewardType = 'coin';
+      newCoins += 1;
+    }
+
+    await query(
+      'UPDATE users SET coins = $1, unlocked_icons = $2, active_icon = $3, unlocked_characters = $4 WHERE nick = $5',
+      [newCoins, ownedIcons.join(','), activeIcon, characters.join(','), nick]
+    );
+
+    res.json({
+      success: true,
+      reward: rewardType,
+      newCoins,
+      unlocked_icons: ownedIcons,
+      unlocked_characters: characters,
+      active_icon: activeIcon
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ─── Casino ────────────────────────────────────────────────────────────────────
 
@@ -1211,11 +1285,16 @@ io.on('connection', (socket) => {
       const stats1 = await getMatchmakingStats(nick);
       const stats2 = await getMatchmakingStats(botNick);
 
+      let botIcon = 'default';
+      if (botNick === 'Bot Soprano') botIcon = 'young_maga';
+      else if (botNick === 'Bot Dushane') botIcon = 'irys';
+      else if (botNick === 'Bot Ezreal') botIcon = 'dalton';
+
       io.to(s1).emit('match_found', { 
         gameId, 
         opponent: botNick, 
         opponentChamp: botChamp, 
-        opponentIcon: 'default', 
+        opponentIcon: botIcon, 
         yourIcon: userIcons[nick] || 'default', 
         mode, 
         role: 'player1',
@@ -1254,11 +1333,16 @@ io.on('connection', (socket) => {
     const stats1 = await getMatchmakingStats(nick);
     const stats2 = await getMatchmakingStats(botNick);
 
+    let botIcon = 'default';
+    if (botNick === 'Bot Soprano') botIcon = 'young_maga';
+    else if (botNick === 'Bot Dushane') botIcon = 'irys';
+    else if (botNick === 'Bot Ezreal') botIcon = 'dalton';
+
     socket.emit('match_found', { 
       gameId, 
       opponent: botNick, 
       opponentChamp: botChamp, 
-      opponentIcon: 'default', 
+      opponentIcon: botIcon, 
       yourIcon: userIcons[nick] || 'default', 
       mode: 'practice', 
       role: 'player1',

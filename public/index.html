@@ -3249,7 +3249,7 @@
               <img src="/assets/images/zygzak.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #4caf50; object-fit: cover; box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);">
             </div>
             <h3 style="color: #4caf50;">Łatwy (Bot Ezreal)</h3>
-            <p><strong>Postać:</strong> Zygzak<br><strong>Trudność:</strong> Najłatwiejszy przeciwnik, popełnia duże błędy czasowe. Od czasu do czasu może wstrząsnąć Twoim ekranem.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+            <p><strong>Postać:</strong> Zygzak<br><strong>Trudność:</strong> Najłatwiejszy przeciwnik, popełnia duże błędy czasowe. Od czasu do czasu może wstrząsnąć Twoim ekranem.<br><strong>Nagroda:</strong> +100 monet za wygraną / +20 za przegraną.</p>
           </div>
           <button class="mode-btn" style="border-color: #4caf50; color: #4caf50;" onclick="startPractice('easy')">Graj (Łatwy)</button>
         </div>
@@ -3261,7 +3261,7 @@
               <img src="/assets/images/dushane.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #ff9800; object-fit: cover; box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);">
             </div>
             <h3 style="color: #ff9800;">Średni (Bot Dushane)</h3>
-            <p><strong>Postać:</strong> Dushane<br><strong>Trudność:</strong> Średni przeciwnik, ma dobrą precyzję i potrafi korygować swoje błędy czasowe za pomocą skupienia.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+            <p><strong>Postać:</strong> Dushane<br><strong>Trudność:</strong> Średni przeciwnik, ma dobrą precyzję i potrafi korygować swoje błędy czasowe za pomocą skupienia.<br><strong>Nagroda:</strong> +100 monet za wygraną / +20 za przegraną.</p>
           </div>
           <button class="mode-btn" style="border-color: #ff9800; color: #ff9800;" onclick="startPractice('medium')">Graj (Średni)</button>
         </div>
@@ -3273,7 +3273,7 @@
               <img src="/assets/images/tony.png" style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #f44336; object-fit: cover; box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);">
             </div>
             <h3 style="color: #f44336;">Trudny (Bot Soprano)</h3>
-            <p><strong>Postać:</strong> Tony Soprano<br><strong>Trudność:</strong> Najtrudniejszy przeciwnik. Trafia z zabójczą dokładnością i może nałożyć na Ciebie 1 sekundę kary.<br><strong>Nagroda:</strong> +50 monet za wygraną / +10 za przegraną.</p>
+            <p><strong>Postać:</strong> Tony Soprano<br><strong>Trudność:</strong> Najtrudniejszy przeciwnik. Trafia z zabójczą dokładnością i może nałożyć na Ciebie 1 sekundę kary.<br><strong>Nagroda:</strong> +400 monet za wygraną / +20 za przegraną.</p>
           </div>
           <button class="mode-btn" style="border-color: #f44336; color: #f44336;" onclick="startPractice('hard')">Graj (Trudny)</button>
         </div>
@@ -3342,13 +3342,20 @@
     </div>
 
     <!-- Trading View -->
+    <!-- Trading View -->
     <div id="trading-view" class="view">
       <div class="lobby-header">
         <h2 style="color: var(--gold-primary); text-shadow: 0 0 15px rgba(200,170,110,0.4);"><i class="fa-solid fa-arrows-rotate"></i> Platforma Wymiany</h2>
         <p>Wymieniaj się ikonami profilowymi z innymi graczami lub sprzedawaj je za monety!</p>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap;">
+      <!-- Sub-tabs for Wymiana -->
+      <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; border-bottom: 1px solid rgba(200,170,110,0.1); padding-bottom: 10px;">
+        <button id="trade-tab-players" class="shop-tab-btn active" style="font-family: var(--font-title); font-size: 1.1rem; padding: 8px 20px; cursor: pointer; background: transparent; border: none; outline: none;" onclick="switchTradeSubTab('players')">Wymiana z graczami</button>
+        <button id="trade-tab-recycle" class="shop-tab-btn" style="font-family: var(--font-title); font-size: 1.1rem; padding: 8px 20px; cursor: pointer; background: transparent; border: none; outline: none;" onclick="switchTradeSubTab('recycle')">Recykling (Skrzynia Dushane)</button>
+      </div>
+
+      <div id="trade-players-view" style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap;">
         
         <!-- Left: Create Offer Form -->
         <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); backdrop-filter: blur(15px);">
@@ -3403,6 +3410,55 @@
         </div>
 
       </div>
+
+      <!-- Recycle View -->
+      <div id="trade-recycle-view" style="display: none; max-width: 1100px; margin: 0 auto; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 30px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); backdrop-filter: blur(15px);">
+        <div style="display: grid; grid-template-columns: 1.2fr 2fr; gap: 40px; align-items: start; flex-wrap: wrap;">
+          
+          <!-- Left side: The Chest and action button -->
+          <div style="display: flex; flex-direction: column; align-items: center; text-align: center; border-right: 1px solid rgba(200,170,110,0.2); padding-right: 30px;">
+            <h3 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 15px; text-transform: uppercase; font-size: 1.4rem;">Skrzynia Dushane</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4; margin-bottom: 25px;">
+              Przetwórz 10 ikon ze swojego ekwipunku. 
+              <br><span style="color: var(--gold-primary); font-weight: bold;">Szanse:</span>
+              <br><span style="color: #ff9800;">Dushane: 4%</span> | <span style="color: var(--cyan-primary);">1 Moneta: 96%</span>
+            </p>
+
+            <!-- Mysterious Chest Visual -->
+            <div style="position: relative; width: 180px; height: 180px; margin-bottom: 25px; display: flex; justify-content: center; align-items: center;">
+              <!-- Outer glowing background rings -->
+              <div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px dashed rgba(200,170,110,0.3); animation: spin 20s linear infinite;"></div>
+              <div style="position: absolute; width: 85%; height: 85%; border-radius: 50%; background: radial-gradient(circle, rgba(200,170,110,0.15) 0%, transparent 70%); animation: pulse-red 2.5s ease-in-out infinite;"></div>
+              <!-- Floating Chest Icon -->
+              <i class="fa-solid fa-box-open" style="font-size: 5.5rem; color: var(--gold-primary); text-shadow: 0 0 30px var(--gold-primary); animation: float 3s ease-in-out infinite; z-index: 2;"></i>
+            </div>
+
+            <!-- Selection counter progress bar -->
+            <div style="width: 100%; max-width: 280px; margin-bottom: 25px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 5px;">
+                <span style="color: var(--text-muted);">Wybrane ikony:</span>
+                <span id="recycle-select-counter" style="color: var(--gold-primary); font-weight: bold; font-family: var(--font-mono);">0 / 10</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; border: 1px solid rgba(200,170,110,0.2);">
+                <div id="recycle-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--gold-dark), var(--gold-primary)); transition: width 0.3s ease;"></div>
+              </div>
+            </div>
+
+            <button id="btn-execute-recycle" class="mode-btn disabled" style="width: 100%; max-width: 280px; padding: 14px; font-size: 1.1rem; font-weight: bold;" onclick="executeRecycle()" disabled>Wymień i otwórz</button>
+          </div>
+
+          <!-- Right side: Owned Icons Grid -->
+          <div>
+            <h3 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 15px; text-transform: uppercase; font-size: 1.25rem; border-bottom: 1px solid rgba(200,170,110,0.2); padding-bottom: 10px;">Twoje Ikony Profilowe</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">Kliknij na ikony, aby wybrać je do recyklingu. Możesz wybierać duplikaty.</p>
+            
+            <div id="recycle-inventory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </main>
 
@@ -3440,6 +3496,35 @@
       </div>
     </div>
   </div>
+
+  <!-- Recycle Reward Modal -->
+  <div id="recycle-reward-modal" class="queue-overlay" style="display:none; z-index:1150;">
+    <div style="background: var(--glass-bg); border: 2px solid var(--gold-primary); border-radius: 12px; padding: 40px; text-align: center; max-width: 440px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.9); backdrop-filter: blur(20px); position: relative;">
+      <!-- Cosmic overlay glow -->
+      <div id="recycle-reward-glow" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 12px; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; z-index: 1;"></div>
+      
+      <div style="position: relative; z-index: 2;">
+        <h3 id="recycle-reward-title" style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 25px; text-transform: uppercase; letter-spacing: 2px; font-size: 1.45rem;">Otwieranie Skrzyni...</h3>
+        
+        <!-- Animated Chest Visual inside Modal -->
+        <div id="recycle-chest-wrapper" style="width: 150px; height: 150px; margin: 0 auto 25px auto; display: flex; justify-content: center; align-items: center; transition: all 0.3s ease;">
+          <i id="recycle-chest-icon" class="fa-solid fa-box-open" style="font-size: 6rem; color: var(--gold-primary); text-shadow: 0 0 30px var(--gold-primary);"></i>
+        </div>
+
+        <!-- Reward Details -->
+        <div id="recycle-reward-info" style="display: none; margin-bottom: 25px; animation: scaleUp 0.4s ease forwards;">
+          <div id="recycle-reward-visual" style="margin: 0 auto 15px auto; display: flex; justify-content: center; align-items: center;">
+            <!-- Will contain champion image or coin image -->
+          </div>
+          <h4 id="recycle-reward-name" style="color: #fff; font-size: 1.4rem; font-family: var(--font-title); margin-bottom: 10px;"></h4>
+          <p id="recycle-reward-desc" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;"></p>
+        </div>
+
+        <button id="recycle-reward-close-btn" class="mode-btn" style="width: 100%; display: none;" onclick="closeRecycleRewardModal()">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Rank Animation Modal -->
   <div id="rank-animation-modal" class="rank-modal">
@@ -3550,7 +3635,7 @@
       { name: 'lewandowski', displayName: 'Lewandowski', image: '/assets/images/lewandowski.png', cost: 300 },
       { name: 'trzaskowski', displayName: 'Trzaskowski', image: '/assets/images/trzaskowski.png', cost: 300 },
       { name: 'kaczynski', displayName: 'Kaczyński', image: '/assets/images/kaczynski.png', cost: 300 },
-      { name: 'starka', displayName: 'Starka', image: '/assets/images/starka.png', cost: 300 },
+      { name: 'starka', displayName: 'Starka', image: '/assets/images/starka.png', cost: 99999, isLegendary: true },
       { name: 'irys', displayName: 'Stary Irys', image: '/assets/images/stary_irys.png', cost: 99999, isLegendary: true },
       { name: 'young_maga', displayName: 'Young Maga', image: '/assets/images/young_maga.png', cost: 99999, isLegendary: true }
     ];
@@ -3747,7 +3832,7 @@
     function updateUserUIElements() {
       let avatarHtml = `<i class="fa-solid fa-shield-halved" style="margin-right: 6px;"></i>`;
       if (currentUser.activeIcon && currentUser.activeIcon !== 'default') {
-        const isLeg = ['irys', 'young_maga'].includes(currentUser.activeIcon);
+        const isLeg = ['irys', 'young_maga', 'starka'].includes(currentUser.activeIcon);
         avatarHtml = `<img src="/assets/images/${currentUser.activeIcon}.png" class="${isLeg ? 'legendary-avatar-glow' : ''}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle; border: 1.5px solid var(--gold-primary);">`;
       }
       document.getElementById('player-tag').innerHTML = `${avatarHtml}${currentUser.nick}`;
@@ -3771,25 +3856,27 @@
         // Set up in-game avatars
         const p1Avatar = document.getElementById('p1-avatar');
         const p2Avatar = document.getElementById('p2-avatar');
-        
+        const myChamp = champions.find(c => c.name === currentUser.activeChampion);
+        const oppChamp = champions.find(c => c.name === opponentChamp);
+
         if (p1Avatar) {
           const userIcon = role === 'player1' ? yourIcon : opponentIcon;
-          const isLeg = ['irys', 'young_maga'].includes(userIcon);
+          const isLeg = ['irys', 'young_maga', 'starka'].includes(userIcon);
           p1Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p1Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           } else {
-            p1Avatar.innerHTML = `<i class="fa-solid fa-shield-halved"></i>`;
+            p1Avatar.innerHTML = `<img src="${myChamp ? myChamp.image : '/assets/images/zygzak.png'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           }
         }
         if (p2Avatar) {
           const userIcon = role === 'player2' ? yourIcon : opponentIcon;
-          const isLeg = ['irys', 'young_maga'].includes(userIcon);
+          const isLeg = ['irys', 'young_maga', 'starka'].includes(userIcon);
           p2Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p2Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           } else {
-            p2Avatar.innerHTML = `<i class="fa-solid fa-shield-halved"></i>`;
+            p2Avatar.innerHTML = `<img src="${oppChamp ? oppChamp.image : '/assets/images/zygzak.png'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
           }
         }
 
@@ -3819,12 +3906,6 @@
         const p2StatsEl = document.getElementById('p2-extra-stats');
         if (p1StatsEl) p1StatsEl.innerHTML = formatExtraStats(yourStats);
         if (p2StatsEl) p2StatsEl.innerHTML = formatExtraStats(opponentStats);
-
-        const myChamp = champions.find(c => c.name === currentUser.activeChampion);
-        const oppChamp = champions.find(c => c.name === opponentChamp);
-
-        document.getElementById('p1-avatar').innerHTML = `<img src="${myChamp ? myChamp.image : '/assets/images/zygzak.png'}">`;
-        document.getElementById('p2-avatar').innerHTML = `<img src="${oppChamp ? oppChamp.image : '/assets/images/zygzak.png'}">`;
         
         // Setup initial scores
         document.getElementById('p1-score').innerText = '0';
@@ -4032,7 +4113,7 @@
         resetBlackjackUI();
       } else if (tab === 'trading') {
         switchView('trading-view');
-        loadTrades();
+        switchTradeSubTab('players');
       } else if (tab === 'shop') {
         switchView('shop-view');
         renderShop();
@@ -5502,7 +5583,7 @@
           // Set large profile avatar
           const avatarContainer = document.getElementById('prof-avatar-container');
           if (avatarContainer) {
-            const isLeg = ['irys', 'young_maga'].includes(data.activeIcon);
+            const isLeg = ['irys', 'young_maga', 'starka'].includes(data.activeIcon);
             avatarContainer.className = `profile-avatar-large ${isLeg ? 'legendary-avatar-glow' : ''}`;
             if (data.activeIcon && data.activeIcon !== 'default') {
               avatarContainer.innerHTML = `<img src="/assets/images/${data.activeIcon}.png">`;
@@ -6636,7 +6717,7 @@
       if (currentUser && currentUser.unlocked_icons) {
         const owned = Array.isArray(currentUser.unlocked_icons) 
           ? currentUser.unlocked_icons 
-          : currentUser.unlocked_icons.split(',');
+          : currentUser.unlocked_icons.split(',').filter(x => x);
 
         const counts = {};
         owned.forEach(icon => {
@@ -6844,6 +6925,249 @@
         console.error(err);
         showToast('Błąd połączenia.');
       }
+    }
+
+    let selectedRecycleIcons = []; // Stores indices of selected owned icons
+
+    function switchTradeSubTab(tab) {
+      const playersBtn = document.getElementById('trade-tab-players');
+      const recycleBtn = document.getElementById('trade-tab-recycle');
+      const playersView = document.getElementById('trade-players-view');
+      const recycleView = document.getElementById('trade-recycle-view');
+
+      if (tab === 'players') {
+        playersBtn.classList.add('active');
+        recycleBtn.classList.remove('active');
+        playersView.style.display = 'grid';
+        recycleView.style.display = 'none';
+        loadTrades();
+      } else {
+        playersBtn.classList.remove('active');
+        recycleBtn.classList.add('active');
+        playersView.style.display = 'none';
+        recycleView.style.display = 'block';
+        selectedRecycleIcons = [];
+        renderRecycleUI();
+      }
+    }
+
+    function renderRecycleUI() {
+      const grid = document.getElementById('recycle-inventory-grid');
+      const counter = document.getElementById('recycle-select-counter');
+      const progressBar = document.getElementById('recycle-progress-bar');
+      const actionBtn = document.getElementById('btn-execute-recycle');
+
+      if (!grid) return;
+
+      const owned = currentUser && currentUser.unlocked_icons 
+        ? (Array.isArray(currentUser.unlocked_icons) ? currentUser.unlocked_icons : currentUser.unlocked_icons.split(',').filter(x => x)) 
+        : [];
+
+      grid.innerHTML = '';
+
+      if (owned.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--text-muted); padding: 20px;">Nie posiadasz żadnych ikon profilowych do recyklingu.</div>';
+        counter.innerText = '0 / 10';
+        progressBar.style.width = '0%';
+        actionBtn.disabled = true;
+        actionBtn.classList.add('disabled');
+        return;
+      }
+
+      owned.forEach((iconName, index) => {
+        const matched = shopIcons.find(i => i.name === iconName);
+        const displayName = matched ? matched.displayName : iconName;
+        const image = matched ? matched.image : `/assets/images/${iconName}.png`;
+        const isLegendary = matched ? matched.isLegendary : false;
+
+        const isSelected = selectedRecycleIcons.includes(index);
+        
+        const cardStyle = `
+          position: relative;
+          cursor: pointer;
+          background: rgba(0,0,0,0.5);
+          border: 2px solid ${isSelected ? 'var(--gold-primary)' : (isLegendary ? '#8a2be2' : 'rgba(200,170,110,0.2)')};
+          border-radius: 8px;
+          padding: 8px;
+          text-align: center;
+          transition: all 0.2s;
+          box-shadow: ${isSelected ? '0 0 10px rgba(200,170,110,0.4)' : 'none'};
+        `;
+
+        const checkmarkHtml = isSelected 
+          ? `<div style="position: absolute; top: -5px; right: -5px; background: var(--gold-primary); color: #000; border-radius: 50%; width: 20px; height: 20px; display: flex; justify-content: center; align-items: center; font-size: 0.75rem; font-weight: bold; z-index: 5;"><i class="fa-solid fa-check"></i></div>` 
+          : '';
+
+        grid.innerHTML += `
+          <div style="${cardStyle}" onclick="toggleRecycleIconSelection(${index})">
+            ${checkmarkHtml}
+            <div style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; margin: 0 auto 5px auto; border: 1px solid rgba(255,255,255,0.1);">
+              <img src="${image}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-main); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${displayName}</div>
+          </div>
+        `;
+      });
+
+      // Update progress & button
+      const count = selectedRecycleIcons.length;
+      counter.innerText = `${count} / 10`;
+      progressBar.style.width = `${count * 10}%`;
+
+      if (count === 10) {
+        actionBtn.disabled = false;
+        actionBtn.classList.remove('disabled');
+      } else {
+        actionBtn.disabled = true;
+        actionBtn.classList.add('disabled');
+      }
+    }
+
+    function toggleRecycleIconSelection(index) {
+      const idx = selectedRecycleIcons.indexOf(index);
+      if (idx > -1) {
+        selectedRecycleIcons.splice(idx, 1);
+      } else {
+        if (selectedRecycleIcons.length < 10) {
+          selectedRecycleIcons.push(index);
+        } else {
+          showToast('Wybrałeś już maksymalną liczbę 10 ikon.');
+        }
+      }
+      renderRecycleUI();
+    }
+
+    async function executeRecycle() {
+      if (!currentUser || selectedRecycleIcons.length !== 10) return;
+
+      const owned = currentUser && currentUser.unlocked_icons 
+        ? (Array.isArray(currentUser.unlocked_icons) ? currentUser.unlocked_icons : currentUser.unlocked_icons.split(',').filter(x => x)) 
+        : [];
+
+      const iconsToRecycle = selectedRecycleIcons.map(idx => owned[idx]);
+      const actionBtn = document.getElementById('btn-execute-recycle');
+
+      actionBtn.disabled = true;
+      actionBtn.classList.add('disabled');
+
+      try {
+        const response = await fetch('/api/trades/recycle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, selectedIcons: iconsToRecycle })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          actionBtn.disabled = false;
+          actionBtn.classList.remove('disabled');
+          return;
+        }
+
+        // Trigger animations & show popup
+        triggerRecycleRewardAnimation(data.reward);
+
+        // Update local user data
+        currentUser.coins = data.newCoins;
+        currentUser.unlocked_icons = data.unlocked_icons;
+        currentUser.activeIcon = data.active_icon;
+        localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+        authorizeUser(currentUser);
+
+        // Reset and refresh
+        selectedRecycleIcons = [];
+        renderRecycleUI();
+
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+        actionBtn.disabled = false;
+        actionBtn.classList.remove('disabled');
+      }
+    }
+
+    function triggerRecycleRewardAnimation(reward) {
+      const modal = document.getElementById('recycle-reward-modal');
+      const title = document.getElementById('recycle-reward-title');
+      const chestWrapper = document.getElementById('recycle-chest-wrapper');
+      const chestIcon = document.getElementById('recycle-chest-icon');
+      const info = document.getElementById('recycle-reward-info');
+      const visual = document.getElementById('recycle-reward-visual');
+      const name = document.getElementById('recycle-reward-name');
+      const desc = document.getElementById('recycle-reward-desc');
+      const closeBtn = document.getElementById('recycle-reward-close-btn');
+      const glow = document.getElementById('recycle-reward-glow');
+
+      // Setup initial state
+      modal.style.display = 'flex';
+      title.innerText = 'Otwieranie Skrzyni...';
+      chestWrapper.style.display = 'flex';
+      chestWrapper.style.transform = 'scale(1)';
+      chestIcon.className = 'fa-solid fa-box-open';
+      chestIcon.style.animation = 'shake 0.3s infinite';
+      info.style.display = 'none';
+      closeBtn.style.display = 'none';
+      glow.style.opacity = '0';
+
+      playChestOpenSound();
+
+      // After 1.5 seconds, reveal reward
+      setTimeout(() => {
+        // Stop shaking, make a burst scale up
+        chestIcon.style.animation = 'none';
+        chestWrapper.style.transform = 'scale(1.3)';
+        
+        setTimeout(() => {
+          chestWrapper.style.display = 'none';
+          info.style.display = 'block';
+          closeBtn.style.display = 'block';
+
+          if (reward === 'dushane') {
+            title.innerText = 'Trafiłeś Legendę!';
+            title.style.color = '#ff9800';
+            
+            // Visual for Dushane
+            visual.innerHTML = `
+              <div style="position: relative; width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 3px solid #ff9800; box-shadow: 0 0 30px #ff9800;">
+                <img src="/assets/images/dushane.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/assets/images/default.png'">
+              </div>
+            `;
+            name.innerText = 'POSTAĆ DUSHANE';
+            name.style.color = '#ff9800';
+            desc.innerText = 'Niezwykle rzadki łowca czasu dołącza do Twojej kolekcji postaci! (Szansa: 4%)';
+            glow.style.background = 'radial-gradient(circle, rgba(255, 152, 0, 0.4) 0%, transparent 70%)';
+            glow.style.opacity = '1';
+            
+            playLegendarySound();
+          } else {
+            title.innerText = 'Zawartość Skrzyni';
+            title.style.color = 'var(--gold-primary)';
+
+            // Visual for 1 Coin
+            visual.innerHTML = `
+              <div style="position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center;">
+                <i class="fa-solid fa-coins" style="font-size: 5.5rem; color: #ffd700; text-shadow: 0 0 25px #ffd700;"></i>
+              </div>
+            `;
+            name.innerText = '+1 Moneta';
+            name.style.color = '#ffd700';
+            desc.innerText = 'Zawsze lepsze to niż nic... Spróbuj ponownie! (Szansa: 96%)';
+            glow.style.background = 'radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 70%)';
+            glow.style.opacity = '1';
+
+            // Just play normal beep tone or simple success
+            _playTone(880, 'sine', 0.2, 0.25);
+          }
+        }, 200);
+
+      }, 1500);
+    }
+
+    function closeRecycleRewardModal() {
+      document.getElementById('recycle-reward-modal').style.display = 'none';
+      fetchUserData(); // Full profile update
     }
 
     function showDuplicateChoiceModal(winDetails, refundAmount) {
