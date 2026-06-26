@@ -1426,6 +1426,104 @@
       line-height: 1;
       transform: rotate(180deg);
     }
+    
+    /* Mobile optimization */
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 10px;
+        align-items: center;
+      }
+      .logo-container h1 {
+        font-size: 1.2rem;
+      }
+      .nav-tabs {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 15px;
+        width: 100%;
+      }
+      .tab-btn {
+        font-size: 0.9rem;
+        padding: 4px 8px;
+      }
+      .tab-btn::after {
+        bottom: -5px;
+      }
+      .user-panel {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        gap: 10px;
+      }
+      .stat-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+      }
+      main {
+        padding: 15px 10px;
+      }
+      .lobby-header h2 {
+        font-size: 1.8rem;
+      }
+      .modes-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      .mode-card {
+        padding: 25px 20px;
+      }
+      .auth-container {
+        margin: 20px auto;
+        padding: 20px;
+        width: 95%;
+      }
+      .arena {
+        padding: 15px 10px;
+        width: 100%;
+      }
+      .stopwatch-btn {
+        width: 140px;
+        height: 140px;
+        font-size: 2.2rem;
+      }
+      .stopwatch-container {
+        margin: 20px 0;
+      }
+      .arena-footer {
+        margin-top: 15px;
+      }
+      .hud-skills {
+        gap: 10px;
+      }
+      .hud-skill-btn {
+        width: 55px;
+        height: 55px;
+      }
+      .hud-skill-btn .key-bind {
+        font-size: 0.6rem;
+        bottom: 1px;
+        right: 2px;
+      }
+      .history-table th, .history-table td {
+        padding: 8px 5px;
+        font-size: 0.75rem;
+      }
+      .blackjack-table {
+        padding: 15px 10px;
+      }
+      .bj-actions-container {
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+      .bj-btn {
+        padding: 10px 18px;
+        font-size: 0.85rem;
+        flex: 1 1 40%;
+      }
+    }
   </style>
 </head>
 <body>
