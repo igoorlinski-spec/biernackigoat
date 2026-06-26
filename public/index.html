@@ -680,6 +680,13 @@
       cursor: pointer;
       position: relative;
       transition: all 0.3s;
+      overflow: hidden;
+    }
+
+    .hud-skill-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .hud-skill-btn:hover:not(.disabled) {
@@ -1509,10 +1516,10 @@
 
     // Available Champions data
     const champions = [
-      { name: 'Zygzak', cost: 0, image: '/assets/images/zygzak.png', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
-      { name: 'Dushane', cost: 2500, image: '/assets/images/dushane.png', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
-      { name: 'Tony Soprano', cost: 4000, image: '/assets/images/tony.png', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
-      { name: 'WhiteToes', cost: 5000, image: '/assets/images/whitetoes.png', desc: 'Czaruje rywala. Czas na stoperze przeciwnika leci 2x szybciej (psuje mu obliczenia)!' }
+      { name: 'Zygzak', cost: 0, image: '/assets/images/zygzak.png', skillImage: '/assets/images/skill_zygzak.jpg', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
+      { name: 'Dushane', cost: 2500, image: '/assets/images/dushane.png', skillImage: '/assets/images/skill_dushane.png', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
+      { name: 'Tony Soprano', cost: 4000, image: '/assets/images/tony.png', skillImage: '/assets/images/skill_tony.png', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
+      { name: 'WhiteToes', cost: 5000, image: '/assets/images/whitetoes.png', skillImage: '/assets/images/skill_whitetoes.png', desc: 'Czaruje rywala. Czas na stoperze przeciwnika leci 2x szybciej (psuje mu obliczenia)!' }
     ];
 
     // Check existing auth in localStorage
@@ -1928,7 +1935,7 @@
 
       hud.innerHTML = `
         <div class="hud-skill-btn ${disabledClass}" onclick="useActiveSkill()">
-          <i class="fa-solid ${champ.icon}"></i>
+          <img src="${champ.skillImage}">
           <span class="key-bind">M</span>
           <div class="tooltip">
             <strong>${champ.name} Skill</strong><br>
