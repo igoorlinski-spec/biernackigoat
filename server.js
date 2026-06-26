@@ -230,6 +230,7 @@ const queues = {
 };
 
 const onlineUsers = {}; // Map nick -> socket.id
+const userChampions = {}; // Map nick -> active champion name
 const activeGames = {};
 
 io.on('connection', (socket) => {
@@ -242,13 +243,14 @@ io.on('connection', (socket) => {
     console.log(`Player ${nick} connected via WebSocket. Socket ID: ${socket.id}`);
   });
 
-  socket.on('join_queue', ({ mode, nick }) => {
+  socket.on('join_queue', ({ mode, nick, champion }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
+    userChampions[nick] = champion || 'Zygzak';
 
     if (!queues[mode].includes(nick)) {
       queues[mode].push(nick);
-      console.log(`${nick} joined ${mode} queue.`);
+      console.log(`${nick} joined ${mode} queue with champ ${champion}.`);
     }
 
     // Try matchmaking
@@ -261,12 +263,14 @@ io.on('connection', (socket) => {
   });
 
   // Practice Mode (Tryb Treningowy)
-  socket.on('start_practice', ({ nick }) => {
+  socket.on('start_practice', ({ nick, champion }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
+    userChampions[nick] = champion || 'Zygzak';
 
     const gameId = `practice_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const botNick = 'Bot Ezreal';
+    userChampions[botNick] = 'Zygzak'; // Bot uses Zygzak
     
     const game = {
       id: gameId,
@@ -283,8 +287,14 @@ io.on('connection', (socket) => {
 
     activeGames[gameId] = game;
 
-    // Notify client match found
-    socket.emit('match_found', { gameId, opponent: botNick, mode: 'practice', role: 'player1' });
+    // Notify client match found with champ info
+    socket.emit('match_found', { 
+      gameId, 
+      opponent: botNick, 
+      opponentChamp: 'Zygzak', 
+      mode: 'practice', 
+      role: 'player1' 
+    });
     
     startNewRound(gameId);
   });
@@ -295,6 +305,35 @@ io.on('connection', (socket) => {
     if (!game) return;
 
     game.roundInputs[nick] = timeDiff;
+
+    // Generate Bot Ezreal's time instantly when player submits
+    if (game.player2 === 'Bot Ezreal') {
+      const bot = 'Bot Ezreal';
+      
+      // Bot decides to use skill (30% chance per round if not used yet)
+      if (!game.skillsUsed[bot] && Math.random() < 0.3) {
+        game.skillsUsed[bot] = true;
+        game.activeEffects[game.player1].shake = true;
+        socket.emit('skill_triggered', { type: 'shake' });
+      }
+
+      // Generate bot's error (signed difference, between -0.9s and +0.9s)
+      let botError = (Math.random() * 1.8 - 0.9);
+      // 25% chance of a larger mistake
+      if (Math.random() < 0.25) {
+        botError += (Math.random() * 2.0 - 1.0);
+      }
+
+      // Apply effects
+      if (game.activeEffects[bot].tony) {
+        botError += (botError >= 0 ? 1.00 : -1.00);
+      }
+      if (game.activeEffects[bot].shake) {
+        botError += (botError >= 0 ? 0.30 : -0.30);
+      }
+
+      game.roundInputs[bot] = parseFloat(botError.toFixed(4));
+    }
 
     // Check if both submitted
     if (Object.keys(game.roundInputs).length === 2) {
@@ -315,7 +354,6 @@ io.on('connection', (socket) => {
     // If opponent is bot, we don't emit socket, we just apply effect to bot
     if (opponent === 'Bot Ezreal') {
       if (skill === 'Zygzak') {
-        // Shakes bot? Bot doesn't care visually, but maybe increases bot's error
         game.activeEffects[opponent].shake = true;
       } else if (skill === 'Dushane') {
         game.activeEffects[nick].dushane = true;
@@ -352,6 +390,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (playerNick) {
       delete onlineUsers[playerNick];
+      delete userChampions[playerNick];
       queues.draft = queues.draft.filter(n => n !== playerNick);
       queues.ranked = queues.ranked.filter(n => n !== playerNick);
 
@@ -397,13 +436,25 @@ function matchmake(mode) {
 
     activeGames[gameId] = game;
 
-    // Send events to both players
+    // Send events to both players with their active champions
     const s1 = onlineUsers[p1];
     const s2 = onlineUsers[p2];
 
     if (s1 && s2) {
-      io.to(s1).emit('match_found', { gameId, opponent: p2, mode, role: 'player1' });
-      io.to(s2).emit('match_found', { gameId, opponent: p1, mode, role: 'player2' });
+      io.to(s1).emit('match_found', { 
+        gameId, 
+        opponent: p2, 
+        opponentChamp: userChampions[p2] || 'Zygzak',
+        mode, 
+        role: 'player1' 
+      });
+      io.to(s2).emit('match_found', { 
+        gameId, 
+        opponent: p1, 
+        opponentChamp: userChampions[p1] || 'Zygzak',
+        mode, 
+        role: 'player2' 
+      });
       startNewRound(gameId);
     } else {
       // Re-queue whoever is still online
@@ -445,53 +496,7 @@ function startNewRound(gameId) {
         scores: game.scores
       });
     }
-  } else {
-    // Simulate Bot Ezreal's play
-    simulateBotPlay(gameId);
   }
-}
-
-function simulateBotPlay(gameId) {
-  const game = activeGames[gameId];
-  if (!game) return;
-
-  const bot = 'Bot Ezreal';
-  const target = game.targetTime;
-
-  // Wait a randomized amount of time (simulating stopwatch run)
-  const delayMs = (target + (Math.random() * 1.5 - 0.2)) * 1000;
-
-  setTimeout(() => {
-    const game = activeGames[gameId];
-    if (!game) return;
-
-    // Decide if bot uses its skill (Zygzak)
-    if (!game.skillsUsed[bot] && Math.random() < 0.3) {
-      game.skillsUsed[bot] = true;
-      game.activeEffects[game.player1].shake = true;
-      const s1 = onlineUsers[game.player1];
-      if (s1) {
-        io.to(s1).emit('skill_triggered', { type: 'shake' });
-      }
-    }
-
-    // Bot calculates its target error
-    // Base bot accuracy error
-    let botError = Math.random() * 0.35; // average error of ~0.17s
-    if (game.activeEffects[bot].tony) {
-      botError += 1.00; // Tony Soprano penalty
-    }
-    if (game.activeEffects[bot].shake) {
-      botError += 0.15; // Shaked penalty
-    }
-
-    game.roundInputs[bot] = botError;
-
-    // Check if player already submitted
-    if (Object.keys(game.roundInputs).length === 2) {
-      evaluateRound(gameId);
-    }
-  }, Math.max(1000, delayMs));
 }
 
 function evaluateRound(gameId) {
@@ -501,28 +506,33 @@ function evaluateRound(gameId) {
   const p1 = game.player1;
   const p2 = game.player2;
 
-  let diff1 = game.roundInputs[p1];
-  let diff2 = game.roundInputs[p2];
+  let diff1 = game.roundInputs[p1]; // signed difference
+  let diff2 = game.roundInputs[p2]; // signed difference
+
+  // Calculate absolute values for victory checking
+  let val1 = Math.abs(diff1);
+  let val2 = Math.abs(diff2);
 
   // Apply skill modifiers
   if (game.activeEffects[p1].dushane) {
-    diff1 = Math.max(0, diff1 - 0.15);
+    val1 = Math.max(0, val1 - 0.15);
   }
   if (game.activeEffects[p2].dushane) {
-    diff2 = Math.max(0, diff2 - 0.15);
+    val2 = Math.max(0, val2 - 0.15);
   }
   if (game.activeEffects[p1].tony) {
-    diff1 += 1.00;
+    // tony adds 1.00s penalty for humans too if not already calculated
+    val1 += 1.00;
   }
   if (game.activeEffects[p2].tony) {
-    diff2 += 1.00;
+    val2 += 1.00;
   }
 
-  // Closer to target wins (i.e. smaller diff)
+  // Closer to target wins (i.e. smaller absolute diff)
   let roundWinner = null;
-  if (diff1 === diff2) {
+  if (val1 === val2) {
     roundWinner = 'draw';
-  } else if (diff1 < diff2) {
+  } else if (val1 < val2) {
     roundWinner = p1;
     game.scores[p1]++;
   } else {

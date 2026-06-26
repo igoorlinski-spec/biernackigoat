@@ -519,6 +519,13 @@
       font-size: 3rem;
       color: var(--gold-primary);
       margin-bottom: 15px;
+      overflow: hidden;
+    }
+
+    .player-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .player-name {
@@ -825,6 +832,13 @@
       font-size: 2.2rem;
       color: var(--gold-primary);
       margin: 0 auto 15px auto;
+      overflow: hidden;
+    }
+
+    .shop-card-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .shop-card h3 {
@@ -1300,7 +1314,7 @@
         <!-- Own Stats -->
         <div class="player-column">
           <div>
-            <div class="player-avatar">
+            <div class="player-avatar" id="p1-avatar">
               <i class="fa-solid fa-shield-halved"></i>
             </div>
             <div class="player-name" id="p1-name">Ty</div>
@@ -1357,7 +1371,7 @@
         <!-- Opponent Stats -->
         <div class="player-column">
           <div>
-            <div class="player-avatar">
+            <div class="player-avatar" id="p2-avatar">
               <i class="fa-solid fa-skull"></i>
             </div>
             <div class="player-name" id="p2-name">Przeciwnik</div>
@@ -1495,10 +1509,10 @@
 
     // Available Champions data
     const champions = [
-      { name: 'Zygzak', cost: 0, icon: 'fa-wind', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
-      { name: 'Dushane', cost: 2500, icon: 'fa-bolt', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
-      { name: 'Tony Soprano', cost: 4000, icon: 'fa-user-tie', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
-      { name: 'WhiteToes', cost: 5000, icon: 'fa-bug', desc: 'Infekuje rywala wirusem. Czas na jego stoperze leci 2x szybciej w tym rundzie!' }
+      { name: 'Zygzak', cost: 0, image: '/assets/images/zygzak.png', desc: 'Darmowy skill. Ekran przeciwnika robi się nagle czerwony i mocno trzęsie (utrudnia timing).' },
+      { name: 'Dushane', cost: 2500, image: '/assets/images/dushane.png', desc: 'Odejmuje 0.15 s od własnego błędu czasowego (poprawia Twój wynik).' },
+      { name: 'Tony Soprano', cost: 4000, image: '/assets/images/tony.png', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
+      { name: 'WhiteToes', cost: 5000, image: '/assets/images/whitetoes.png', desc: 'Czaruje rywala. Czas na stoperze przeciwnika leci 2x szybciej (psuje mu obliczenia)!' }
     ];
 
     // Check existing auth in localStorage
@@ -1579,7 +1593,7 @@
       socket = io();
       socket.emit('register_connection', currentUser.nick);
 
-      socket.on('match_found', ({ gameId, opponent, mode, role }) => {
+      socket.on('match_found', ({ gameId, opponent, opponentChamp, mode, role }) => {
         currentGameId = gameId;
         currentRole = role;
         currentOpponent = opponent;
@@ -1591,10 +1605,17 @@
         // Switch to Game View
         switchView('game-view');
 
-        // Setup board names
+        // Setup board names and avatars
         document.getElementById('p1-name').innerText = currentUser.nick + ' (Ty)';
         document.getElementById('p1-champ').innerText = `Postać: ${currentUser.activeChampion}`;
         document.getElementById('p2-name').innerText = opponent;
+        document.getElementById('p2-champ').innerText = `Postać: ${opponentChamp || 'Zygzak'}`;
+
+        const myChamp = champions.find(c => c.name === currentUser.activeChampion);
+        const oppChamp = champions.find(c => c.name === opponentChamp);
+
+        document.getElementById('p1-avatar').innerHTML = `<img src="${myChamp ? myChamp.image : '/assets/images/zygzak.png'}">`;
+        document.getElementById('p2-avatar').innerHTML = `<img src="${oppChamp ? oppChamp.image : '/assets/images/zygzak.png'}">`;
         
         // Setup initial scores
         document.getElementById('p1-score').innerText = '0';
@@ -1651,8 +1672,13 @@
         const resultTitle = document.getElementById('round-result-title');
         
         document.getElementById('res-target').innerText = `${target.toFixed(2)}s`;
-        document.getElementById('res-your-diff').innerText = `+${yourDiff.toFixed(4)}s`;
-        document.getElementById('res-opp-diff').innerText = `+${oppDiff.toFixed(4)}s`;
+        
+        const formatDiff = (val) => {
+          return (val >= 0 ? '+' : '') + val.toFixed(3) + 's';
+        };
+
+        document.getElementById('res-your-diff').innerText = formatDiff(yourDiff);
+        document.getElementById('res-opp-diff').innerText = formatDiff(oppDiff);
 
         if (winner === 'draw') {
           resultTitle.innerText = 'REMIS';
@@ -1745,7 +1771,7 @@
       document.getElementById('queue-title-text').innerText = mode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
       document.getElementById('queue-screen').style.display = 'flex';
 
-      socket.emit('join_queue', { mode, nick: currentUser.nick });
+      socket.emit('join_queue', { mode, nick: currentUser.nick, champion: currentUser.activeChampion });
 
       queueInterval = setInterval(() => {
         queueSeconds++;
@@ -1764,7 +1790,7 @@
     // Practice Mode (Tryb Treningowy)
     function startPractice() {
       if (!socket) return;
-      socket.emit('start_practice', { nick: currentUser.nick });
+      socket.emit('start_practice', { nick: currentUser.nick, champion: currentUser.activeChampion });
     }
 
     // Stopwatch Controls
@@ -1791,12 +1817,12 @@
         let realDuration = (stopTime - startTime) / 1000;
         let virtualDuration = realDuration * speedupMultiplier;
         
-        let diff = Math.abs(virtualDuration - targetTime);
+        let signedDiff = virtualDuration - targetTime;
 
         socket.emit('submit_time', {
           gameId: currentGameId,
           nick: currentUser.nick,
-          timeDiff: diff
+          timeDiff: parseFloat(signedDiff.toFixed(4))
         });
       }
     }
@@ -1840,7 +1866,7 @@
           <div class="shop-card">
             <div>
               <div class="shop-card-icon">
-                <i class="fa-solid ${champ.icon}"></i>
+                <img src="${champ.image}">
               </div>
               <h3>${champ.name}</h3>
               <div class="champ-price">
