@@ -2212,11 +2212,11 @@
     <!-- Daily Chest View -->
     <div id="daily-chest-view" class="view">
       <div class="lobby-header">
-        <h2 style="color: var(--gold-primary); text-shadow: 0 0 15px rgba(200,170,110,0.4);"><i class="fa-solid fa-gift"></i> Codzienna skrzynka</h2>
-        <p>Odbierz darmowe monety raz na 24 godziny! Losuj nagrodę w stylu otwierania skrzynek CS:GO.</p>
+        <h2 style="color: var(--gold-primary); text-shadow: 0 0 15px rgba(200,170,110,0.4);"><i class="fa-solid fa-gift"></i> Skrzynki z Nagrodami</h2>
+        <p>Odbierz darmowe monety raz na dobę lub otwórz płatną skrzynię z unikalnymi ikonami profilowymi!</p>
       </div>
 
-      <div class="chest-container" style="max-width: 700px; margin: 0 auto 30px auto; background: rgba(0,0,0,0.4); border: 2px solid var(--gold-primary); border-radius: 8px; padding: 25px; text-align: center; box-shadow: 0 0 20px rgba(200,170,110,0.15);">
+      <div class="chest-container" style="max-width: 800px; margin: 0 auto 30px auto; background: rgba(0,0,0,0.4); border: 2px solid var(--gold-primary); border-radius: 8px; padding: 25px; text-align: center; box-shadow: 0 0 20px rgba(200,170,110,0.15);">
         
         <!-- CS:GO Roulette Viewport -->
         <div class="roulette-viewport" style="position: relative; width: 100%; height: 120px; background: #070f19; border: 1px solid rgba(200, 170, 110, 0.3); border-radius: 4px; overflow: hidden; margin-bottom: 25px;">
@@ -2228,13 +2228,33 @@
           </div>
         </div>
 
-        <!-- Open button & cooldown timer -->
-        <div class="chest-action-box">
-          <button class="mode-btn" id="claim-chest-btn" style="border-color: var(--gold-primary); color: var(--gold-primary); font-size: 1.2rem; padding: 12px 35px;" onclick="openDailyChest()">Otwórz Skrzynię</button>
-          <div id="chest-cooldown-text" style="margin-top: 15px; font-size: 0.95rem; color: var(--text-muted); font-weight: 600;">
-            Sprawdzanie dostępności...
+        <!-- Two columns for the chests -->
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 15px;">
+          <!-- Daily Chest Card -->
+          <div style="flex: 1; min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid rgba(200, 170, 110, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+            <h4 style="color: var(--gold-primary); margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Codzienna</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Darmowe monety (od 5 do 100) dostępne raz na 24 godziny.</p>
+            <div class="chest-action-box" style="width: 100%;">
+              <button class="mode-btn" id="claim-chest-btn" style="border-color: var(--gold-primary); color: var(--gold-primary); font-size: 1rem; padding: 10px 20px; width: 100%;" onclick="openDailyChest()">Otwórz za darmo</button>
+              <div id="chest-cooldown-text" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                Sprawdzanie...
+              </div>
+            </div>
+          </div>
+
+          <!-- Paid Icon Chest Card -->
+          <div style="flex: 1; min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 152, 0, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+            <h4 style="color: #ff9800; margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Ikon (Płatna)</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Wylosuj ikony ze sklepu lub legendarną ikonę <b>Irysa</b> (1% szans)! Koszt: 30 monet.</p>
+            <div class="chest-action-box" style="width: 100%;">
+              <button class="mode-btn" id="claim-paid-chest-btn" style="border-color: #ff9800; color: #ff9800; font-size: 1rem; padding: 10px 20px; width: 100%;" onclick="openPaidIconChest()">Otwórz za 30 monet</button>
+              <div id="paid-chest-status-text" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                Dostępna (30 Coins)
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   </main>
@@ -2340,7 +2360,8 @@
       { name: 'disco_adamus', displayName: 'Disco Adamus', image: '/assets/images/disco_adamus.png', cost: 100 },
       { name: 'popek', displayName: 'Popek', image: '/assets/images/popek.png', cost: 100 },
       { name: 'milosz_kulesza', displayName: 'Miłosz Kulesza', image: '/assets/images/milosz_kulesza.png', cost: 100 },
-      { name: 'mr_krycha', displayName: 'Mr Krycha', image: '/assets/images/mr_krycha.png', cost: 100 }
+      { name: 'mr_krycha', displayName: 'Mr Krycha', image: '/assets/images/mr_krycha.png', cost: 100 },
+      { name: 'irys', displayName: 'Irys', image: '/assets/images/irys.png', cost: 99999, isLegendary: true }
     ];
 
     let activeShopSubTab = 'champions';
@@ -3106,22 +3127,31 @@
             btnHtml = `<button class="buy-btn active-champ" style="border-color: var(--gold-primary); color: var(--gold-primary);">Wybrana</button>`;
           } else if (isUnlocked) {
             btnHtml = `<button class="buy-btn unlocked" onclick="selectIcon('${icon.name}')">Ustaw</button>`;
+          } else if (icon.isLegendary) {
+            btnHtml = `<button class="buy-btn disabled" style="background: rgba(255,0,0,0.1); border-color: #d32f2f; color: #d32f2f;">Tylko skrzynki</button>`;
           } else {
             const canAfford = currentUser && currentUser.coins >= icon.cost;
             btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyIcon('${icon.name}', ${icon.cost})">Kup za Monety</button>`;
           }
 
+          let priceText = icon.isFree ? 'Darmowa' : `<i class="fa-solid fa-coins"></i> ${icon.cost} Monet`;
+          if (icon.isLegendary) {
+            priceText = `<span style="color: #ff1744; font-weight: bold; text-shadow: 0 0 5px rgba(255,23,68,0.5);"><i class="fa-solid fa-crown"></i> LEGENDARNA (1%)</span>`;
+          }
+
+          let cardStyle = icon.isLegendary ? 'border-color: #d32f2f; box-shadow: 0 0 15px rgba(211, 47, 47, 0.3);' : '';
+
           container.innerHTML += `
-            <div class="shop-card">
+            <div class="shop-card" style="${cardStyle}">
               <div>
-                <div class="shop-card-icon" style="border-radius: 50%; overflow: hidden; border-width: 2px;">
+                <div class="shop-card-icon" style="border-radius: 50%; overflow: hidden; border-width: 2px; ${icon.isLegendary ? 'border-color: #ffd700; box-shadow: 0 0 10px #ffd700;' : ''}">
                   <img src="${icon.image}" style="border-radius: 50%; object-fit: cover;">
                 </div>
                 <h3>${icon.displayName}</h3>
                 <div class="champ-price">
-                  ${icon.isFree ? 'Darmowa' : `<i class="fa-solid fa-coins"></i> ${icon.cost} Monet`}
+                  ${priceText}
                 </div>
-                <p class="champ-skill-desc">Unikalna ikona profilowa przedstawiająca: ${icon.displayName}.</p>
+                <p class="champ-skill-desc">${icon.isLegendary ? 'Legendarna, unikalna ikona profilowa. Możliwa do zdobycia wyłącznie z Płatnej Skrzyni Ikon!' : `Unikalna ikona profilowa przedstawiająca: ${icon.displayName}.`}</p>
               </div>
               ${btnHtml}
             </div>
@@ -3423,6 +3453,137 @@
       }
     }
 
+    async function openPaidIconChest() {
+      if (rouletteSpinning) return;
+      if (!currentUser) return;
+      if (currentUser.coins < 30) {
+        showToast('Niewystarczająca ilość monet! (Potrzebujesz 30 monet)');
+        return;
+      }
+
+      const btn = document.getElementById('claim-paid-chest-btn');
+      const statusText = document.getElementById('paid-chest-status-text');
+      const tape = document.getElementById('roulette-tape');
+      if (!btn || !tape) return;
+
+      rouletteSpinning = true;
+      btn.disabled = true;
+      btn.classList.add('disabled');
+      statusText.innerText = 'Losowanie w toku...';
+
+      try {
+        const response = await fetch('/api/claim-paid-chest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick })
+        });
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          rouletteSpinning = false;
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          statusText.innerText = 'Dostępna (30 Coins)';
+          return;
+        }
+
+        const winIconName = data.rewardIcon;
+        const isLegendary = data.isLegendary;
+        const isDuplicate = data.isDuplicate;
+
+        tape.style.transition = 'none';
+        tape.style.transform = 'translateX(0px)';
+        tape.innerHTML = '';
+        
+        const cardWidth = 100;
+        const gap = 8;
+        const totalCards = 60;
+        const winIndex = 45;
+
+        const getIconDetails = (name) => {
+          if (name === 'irys') return { displayName: 'Irys', image: '/assets/images/irys.png', isLegendary: true };
+          const icon = shopIcons.find(i => i.name === name);
+          return icon ? icon : { displayName: name, image: `/assets/images/${name}.png` };
+        };
+
+        const winDetails = getIconDetails(winIconName);
+        
+        for (let i = 0; i < totalCards; i++) {
+          let cardDetails;
+          if (i === winIndex) {
+            cardDetails = winDetails;
+          } else {
+            if (Math.random() < 0.04) {
+              cardDetails = { displayName: 'Irys', image: '/assets/images/irys.png', isLegendary: true };
+            } else {
+              const dummyPool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha'];
+              const dummyName = dummyPool[Math.floor(Math.random() * dummyPool.length)];
+              cardDetails = getIconDetails(dummyName);
+            }
+          }
+
+          let bg = 'linear-gradient(135deg, #1b263b, #0d1b2a)'; 
+          let border = '1px solid rgba(255,255,255,0.1)';
+          let tagText = '';
+
+          if (cardDetails.isLegendary) {
+            bg = 'linear-gradient(135deg, #b71c1c, #d32f2f)'; 
+            border = '2px solid #ffd700'; 
+            tagText = '<span style="font-size:0.65rem; color:#ffd700; font-weight:bold; text-transform:uppercase; margin-top:2px;">LEGENDA</span>';
+          } else if (cardDetails.cost > 0) {
+            bg = 'linear-gradient(135deg, #4a148c, #7b1fa2)'; 
+          }
+
+          tape.innerHTML += `
+            <div class="roulette-card" style="width: ${cardWidth}px; height: 100px; flex-shrink: 0; border-radius: 4px; background: ${bg}; border: ${border}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); font-family: var(--font-title); position: relative; padding: 5px;">
+              <img src="${cardDetails.image}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2);">
+              <span style="font-size: 0.75rem; font-weight: bold; color: #fff; margin-top: 5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${cardDetails.displayName}</span>
+              ${tagText}
+            </div>
+          `;
+        }
+
+        tape.offsetHeight; 
+
+        const viewportWidth = tape.parentElement.clientWidth;
+        const itemOffset = winIndex * (cardWidth + gap) + cardWidth / 2;
+        const randOffset = Math.floor(Math.random() * (cardWidth - 20)) - (cardWidth / 2 - 10);
+        const targetX = - (itemOffset + randOffset - viewportWidth / 2);
+
+        tape.style.transition = 'transform 6s cubic-bezier(0.08, 0.8, 0.12, 1)';
+        tape.style.transform = 'translateX(' + targetX + 'px)';
+
+        setTimeout(() => {
+          rouletteSpinning = false;
+          currentUser.coins = data.newCoins;
+          currentUser.unlocked_icons = data.unlocked_icons;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          statusText.innerText = 'Dostępna (30 Coins)';
+
+          if (isLegendary) {
+            showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
+          } else if (isDuplicate) {
+            showToast(`Otrzymałeś ikonę: ${winDetails.displayName} (Duplikat - zwrot 15 monet!).`);
+          } else {
+            showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+          }
+        }, 6100);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+        rouletteSpinning = false;
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+        statusText.innerText = 'Dostępna (30 Coins)';
+      }
+    }
     // Render skill HUD in the Game View
     function renderSkillHUD() {
       const hud = document.getElementById('skill-hud-list');

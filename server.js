@@ -377,6 +377,59 @@ app.post('/api/claim-daily-chest', async (req, res) => {
   }
 });
 
+app.post('/api/claim-paid-chest', async (req, res) => {
+  const { nick } = req.body;
+  if (!nick) return res.status(400).json({ error: 'Nick jest wymagany' });
+  try {
+    const result = await query('SELECT coins, unlocked_icons FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+
+    const cost = 30;
+    if ((user.coins || 0) < cost) {
+      return res.status(400).json({ error: 'Brak monet (wymagane 30 monet)' });
+    }
+
+    let rewardIcon = '';
+    let isLegendary = false;
+
+    const roll = Math.random() * 100;
+    if (roll <= 1.0) {
+      rewardIcon = 'irys';
+      isLegendary = true;
+    } else {
+      const pool = ['dalton', 'tusk', 'okekel', 'disco_adamus', 'popek', 'milosz_kulesza', 'mr_krycha'];
+      rewardIcon = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    const isDuplicate = icons.includes(rewardIcon);
+
+    let finalCoins = user.coins - cost;
+    if (isDuplicate) {
+      finalCoins += 15; // refund 15 coins for duplicate
+    } else {
+      icons.push(rewardIcon);
+    }
+
+    await query(
+      'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
+      [finalCoins, icons.join(','), nick]
+    );
+
+    res.json({
+      success: true,
+      rewardIcon,
+      isLegendary,
+      isDuplicate,
+      newCoins: finalCoins,
+      unlocked_icons: icons
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Casino ────────────────────────────────────────────────────────────────────
 
 const activeBJGames = {};
