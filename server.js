@@ -1286,9 +1286,9 @@ io.on('connection', (socket) => {
       const stats2 = await getMatchmakingStats(botNick);
 
       let botIcon = 'default';
-      if (botNick === 'Bot Soprano') botIcon = 'young_maga';
-      else if (botNick === 'Bot Dushane') botIcon = 'irys';
-      else if (botNick === 'Bot Ezreal') botIcon = 'dalton';
+      if (botNick === 'Bot Soprano') botIcon = 'tony';
+      else if (botNick === 'Bot Dushane') botIcon = 'dushane';
+      else if (botNick === 'Bot Ezreal') botIcon = 'zygzak';
 
       io.to(s1).emit('match_found', { 
         gameId, 
@@ -1334,9 +1334,9 @@ io.on('connection', (socket) => {
     const stats2 = await getMatchmakingStats(botNick);
 
     let botIcon = 'default';
-    if (botNick === 'Bot Soprano') botIcon = 'young_maga';
-    else if (botNick === 'Bot Dushane') botIcon = 'irys';
-    else if (botNick === 'Bot Ezreal') botIcon = 'dalton';
+    if (botNick === 'Bot Soprano') botIcon = 'tony';
+    else if (botNick === 'Bot Dushane') botIcon = 'dushane';
+    else if (botNick === 'Bot Ezreal') botIcon = 'zygzak';
 
     socket.emit('match_found', { 
       gameId, 

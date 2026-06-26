@@ -3836,7 +3836,7 @@
     function updateUserUIElements() {
       let avatarHtml = `<i class="fa-solid fa-shield-halved" style="margin-right: 6px;"></i>`;
       if (currentUser.activeIcon && currentUser.activeIcon !== 'default') {
-        const isLeg = ['irys', 'young_maga', 'starka'].includes(currentUser.activeIcon);
+        const isLeg = ['irys', 'young_maga', 'starka', 'dushane', 'tony'].includes(currentUser.activeIcon);
         avatarHtml = `<img src="/assets/images/${currentUser.activeIcon}.png" class="${isLeg ? 'legendary-avatar-glow' : ''}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle; border: 1.5px solid var(--gold-primary);">`;
       }
       document.getElementById('player-tag').innerHTML = `${avatarHtml}${currentUser.nick}`;
@@ -3865,7 +3865,7 @@
 
         if (p1Avatar) {
           const userIcon = role === 'player1' ? yourIcon : opponentIcon;
-          const isLeg = ['irys', 'young_maga', 'starka'].includes(userIcon);
+          const isLeg = ['irys', 'young_maga', 'starka', 'dushane', 'tony'].includes(userIcon);
           p1Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p1Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
@@ -3875,7 +3875,7 @@
         }
         if (p2Avatar) {
           const userIcon = role === 'player2' ? yourIcon : opponentIcon;
-          const isLeg = ['irys', 'young_maga', 'starka'].includes(userIcon);
+          const isLeg = ['irys', 'young_maga', 'starka', 'dushane', 'tony'].includes(userIcon);
           p2Avatar.className = `player-avatar ${isLeg ? 'legendary-avatar-glow' : ''}`;
           if (userIcon && userIcon !== 'default') {
             p2Avatar.innerHTML = `<img src="/assets/images/${userIcon}.png" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
@@ -3965,6 +3965,11 @@
       socket.on('round_result', ({ winner, scores, yourDiff, oppDiff, target, yourDushaneImprovement, oppDushaneImprovement }) => {
         const resultScreen = document.getElementById('round-result-screen');
         const resultTitle = document.getElementById('round-result-title');
+        
+        if (scores) {
+          document.getElementById('p1-score').innerText = scores[currentUser.nick];
+          document.getElementById('p2-score').innerText = scores[currentOpponent];
+        }
         
         document.getElementById('res-target').innerText = `${target.toFixed(2)}s`;
         
@@ -5587,7 +5592,7 @@
           // Set large profile avatar
           const avatarContainer = document.getElementById('prof-avatar-container');
           if (avatarContainer) {
-            const isLeg = ['irys', 'young_maga', 'starka'].includes(data.activeIcon);
+            const isLeg = ['irys', 'young_maga', 'starka', 'dushane', 'tony'].includes(data.activeIcon);
             avatarContainer.className = `profile-avatar-large ${isLeg ? 'legendary-avatar-glow' : ''}`;
             if (data.activeIcon && data.activeIcon !== 'default') {
               avatarContainer.innerHTML = `<img src="/assets/images/${data.activeIcon}.png">`;
