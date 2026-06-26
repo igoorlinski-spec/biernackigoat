@@ -2732,55 +2732,156 @@
     </div>
 
     <!-- Pharaoh Event View -->
-    <div id="pharaoh-event-view" class="view">
+    <div id="pharaoh-event-view" class="view" style="position: relative;">
+      <style>
+        .pharaoh-arena {
+          background: radial-gradient(circle at center, #1b0f02 0%, #050300 100%) !important;
+          border: 2px solid #ffd700 !important;
+          border-radius: 12px;
+          padding: 35px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 550px;
+          position: relative;
+          box-shadow: 0 0 45px rgba(255, 215, 0, 0.25), inset 0 0 80px rgba(0,0,0,0.95);
+          overflow: hidden;
+        }
+        .pharaoh-arena::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(45deg, rgba(255,215,0,0.02) 25%, transparent 25%),
+                      linear-gradient(-45deg, rgba(255,215,0,0.02) 25%, transparent 25%);
+          background-size: 40px 40px;
+          opacity: 0.7;
+          pointer-events: none;
+        }
+        .pharaoh-pyramid-bg {
+          position: absolute;
+          bottom: -20px;
+          opacity: 0.08;
+          font-size: 15rem;
+          color: #ffd700;
+          pointer-events: none;
+          z-index: 0;
+          animation: float 6s ease-in-out infinite;
+        }
+        .pharaoh-portrait-container {
+          position: relative;
+          margin-bottom: 20px;
+          animation: float 4s ease-in-out infinite;
+          z-index: 1;
+        }
+        .pharaoh-portrait {
+          width: 140px;
+          height: 140px;
+          border-radius: 50%;
+          border: 3px solid #ffd700;
+          box-shadow: 0 0 35px #ffd700, inset 0 0 20px rgba(0,0,0,0.8);
+          object-fit: cover;
+        }
+        .pharaoh-portrait-glow {
+          position: absolute;
+          inset: -8px;
+          border-radius: 50%;
+          border: 1px dashed rgba(255, 215, 0, 0.5);
+          animation: spin 12s linear infinite;
+        }
+        .pharaoh-btn {
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #4a320c 0%, #1a0f00 70%, #080400 100%) !important;
+          border: 3px solid #ffd700 !important;
+          cursor: pointer;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: #ffd700 !important;
+          font-size: 3rem;
+          box-shadow:
+            0 0 30px rgba(255, 215, 0, 0.4),
+            0 0 60px rgba(255, 215, 0, 0.15),
+            inset 0 0 30px rgba(0,0,0,0.8);
+          transition: all 0.2s ease;
+          position: relative;
+          z-index: 1;
+        }
+        .pharaoh-btn:hover {
+          transform: scale(1.08);
+          box-shadow: 0 0 50px rgba(255, 215, 0, 0.7), inset 0 0 30px rgba(0,0,0,0.8);
+        }
+        .pharaoh-btn.running {
+          animation: pulse-gold 1.4s ease-in-out infinite;
+          border-color: #ff9800 !important;
+          color: #ff9800 !important;
+        }
+        @keyframes pulse-gold {
+          0% { transform: scale(1); box-shadow: 0 0 40px #ffd700; }
+          50% { transform: scale(1.06); box-shadow: 0 0 80px #ff9800, 0 0 140px rgba(255, 152, 0, 0.4); }
+          100% { transform: scale(1); box-shadow: 0 0 40px #ffd700; }
+        }
+      </style>
+      
       <div class="lobby-header">
-        <h2 style="color: #ffd700; text-shadow: 0 0 15px #ffd700;"><i class="fa-solid fa-crown"></i> Próba Faraona</h2>
-        <p>Zatrzymaj stoper idealnie na 1.00s. Licznik jest niewidoczny.</p>
-        <div id="event-countdown" style="display: inline-block; margin-top: 10px; font-size: 0.85rem; color: #ffd700; font-weight: bold; border: 1px dashed rgba(255,215,0,0.3); padding: 8px 15px; border-radius: 4px;">
+        <h2 style="color: #ffd700; text-shadow: 0 0 20px #ffd700; font-family: var(--font-title); letter-spacing: 4px; font-weight: 900;">
+          <i class="fa-solid fa-ankh" style="margin-right: 8px;"></i> PRÓBA FARAONA <i class="fa-solid fa-eye" style="margin-left: 8px;"></i>
+        </h2>
+        <p style="color: #e0d0a0; font-weight: 500;">Przenieś się do serca starożytnego Egiptu. Zatrzymaj stoper idealnie na 1.00s w całkowitej ciemności!</p>
+        <div id="event-countdown" style="display: inline-block; margin-top: 12px; font-size: 0.9rem; color: #ffd700; font-weight: bold; border: 2px solid #ffd700; background: rgba(0,0,0,0.5); padding: 8px 20px; border-radius: 6px; box-shadow: 0 0 15px rgba(255,215,0,0.25); text-transform: uppercase; letter-spacing: 1px;">
           Ładowanie czasu eventu...
         </div>
       </div>
-      <div class="arena" style="border-color: #ffd700; max-width: 600px; margin: 0 auto; box-shadow: inset 0 0 50px rgba(255, 215, 0, 0.15);">
+      
+      <div class="pharaoh-arena" style="max-width: 650px; margin: 0 auto;">
+        <i class="fa-solid fa-gopuram pharaoh-pyramid-bg"></i>
         
         <!-- Results screen inside Pharaoh Arena -->
-        <div class="round-result-overlay" id="pharaoh-result-screen" style="border-color: #ffd700;">
-          <h3 class="result-title" id="pharaoh-result-title" style="color: #ffd700;">SUKCES!</h3>
-          <div class="result-stats-box" style="border-color: rgba(255, 215, 0, 0.3); background: rgba(0,0,0,0.85);">
+        <div class="round-result-overlay" id="pharaoh-result-screen" style="border-color: #ffd700; background: radial-gradient(circle at center, #1b0f02 0%, #050300 100%) !important;">
+          <h3 class="result-title" id="pharaoh-result-title" style="color: #ffd700; font-size: 3rem; letter-spacing: 5px;">SUKCES!</h3>
+          <div class="result-stats-box" style="border-color: #ffd700; background: rgba(0,0,0,0.9); box-shadow: 0 0 20px rgba(255,215,0,0.15);">
             <div class="result-stat-row">
-              <span class="stat-label">Cel:</span>
-              <span class="stat-val" style="color: #ffd700;">1.00s</span>
+              <span class="stat-label" style="color: #c8aa6e;">Cel grobowca:</span>
+              <span class="stat-val" style="color: #ffd700; font-weight: 900; font-size: 1.2rem;">1.00s</span>
             </div>
             <div class="result-stat-row">
               <span class="stat-label">Twój czas:</span>
-              <span class="stat-val" id="pharaoh-your-time">1.000s</span>
+              <span class="stat-val" id="pharaoh-your-time" style="color: #fff; font-family: monospace; font-size: 1.2rem;">1.000s</span>
             </div>
             <div class="result-stat-row">
-              <span class="stat-label">Różnica:</span>
-              <span class="stat-val" id="pharaoh-your-diff">0.000s</span>
+              <span class="stat-label">Klątwa błędu:</span>
+              <span class="stat-val" id="pharaoh-your-diff" style="font-family: monospace; font-size: 1.2rem;">0.000s</span>
             </div>
           </div>
-          <div style="display: flex; gap: 15px;">
-            <button class="mode-btn" style="border-color: #ffd700; color: #ffd700;" onclick="resetPharaohEventRound()">Spróbuj ponownie</button>
-            <button class="mode-btn" onclick="switchTab('lobby')">Powrót do Lobby</button>
+          <div style="display: flex; gap: 15px; z-index: 10;">
+            <button class="mode-btn" style="border-color: #ffd700; color: #ffd700; background: rgba(255,215,0,0.05);" onclick="resetPharaohEventRound()">Przełam klątwę (Zagraj)</button>
+            <button class="mode-btn" onclick="switchTab('lobby')">Uciekaj do lobby</button>
           </div>
         </div>
 
-        <div class="arena-header">
-          <div class="target-time-box" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.05);">
-            <div class="target-label" style="color: #ffd700;">Wymagany czas:</div>
-            <div class="target-val" style="color: #ffd700; text-shadow: 0 0 10px #ffd700;">1.00s</div>
+        <div class="pharaoh-portrait-container">
+          <div class="pharaoh-portrait-glow"></div>
+          <img src="/assets/images/pharaoh.jpg" class="pharaoh-portrait" alt="Faraon">
+        </div>
+
+        <div class="arena-header" style="z-index: 1;">
+          <div class="target-time-box" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.08); padding: 12px 30px; box-shadow: 0 0 15px rgba(255,215,0,0.1);">
+            <div class="target-label" style="color: #ffd700; letter-spacing: 1px;">ZŁOTE CIĘCIE CZASU:</div>
+            <div class="target-val" style="color: #ffd700; text-shadow: 0 0 15px #ffd700; font-size: 3.2rem; font-family: var(--font-mono);">1.00s</div>
           </div>
         </div>
 
         <div class="stopwatch-container">
-          <button class="stopwatch-btn" id="pharaoh-chrono-btn" onclick="triggerPharaohStopwatch()" style="border-color: #ffd700; color: #ffd700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);">
+          <button class="pharaoh-btn" id="pharaoh-chrono-btn" onclick="triggerPharaohStopwatch()">
             <i class="fa-solid fa-hourglass-start"></i>
           </button>
-          <div class="stopwatch-status" id="pharaoh-chrono-status">Kliknij lub naciśnij SPACJĘ aby wystartować</div>
+          <div class="stopwatch-status" id="pharaoh-chrono-status" style="color: #ffd700; text-shadow: 0 0 5px rgba(255,215,0,0.5); font-weight: bold; margin-top: 15px;">Dotknij artefaktu, aby rozpocząć rytuał</div>
         </div>
 
-        <div class="arena-footer">
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Tylko perfekcyjne 1.00s (tolerancja +/- 0.00s przy zaokrągleniu do 2 miejsc) daje gwiazdkę.</p>
+        <div class="arena-footer" style="z-index: 1;">
+          <p style="color: #c8aa6e; font-size: 0.9rem; font-weight: 500; letter-spacing: 0.5px;">Tylko perfekcyjne 1.00s (tolerancja +/- 0.00s przy zaokrągleniu) daruje Ci boską Gwiazdę.</p>
         </div>
       </div>
     </div>
@@ -3692,6 +3793,9 @@
 
     function logout() {
       stopCasinoMusic();
+      stopPharaohMusic();
+      particleStormActive = false;
+      particleColorsOverride = null;
       localStorage.removeItem('hextech_user');
       currentUser = null;
       if (socket) socket.disconnect();
@@ -3713,6 +3817,18 @@
         startCasinoMusic();
       } else {
         stopCasinoMusic();
+      }
+
+      if (tab === 'pharaoh-event') {
+        startPharaohMusic();
+        particleStormActive = true;
+        particleColorsOverride = ['rgba(255,215,0,', 'rgba(230,130,10,', 'rgba(190,150,50,'];
+      } else {
+        stopPharaohMusic();
+        if (tab !== 'blackjack') {
+          particleStormActive = false;
+          particleColorsOverride = null;
+        }
       }
 
       if (tab === 'lobby') {
@@ -3941,6 +4057,117 @@
       }
     }
 
+    let pharaohMusicInterval = null;
+    let pharaohMusicStep = 0;
+    
+    function startPharaohMusic() {
+      _resumeAC();
+      if (pharaohMusicInterval) return;
+      
+      const scale = [146.83, 155.56, 185.00, 196.00, 220.00, 233.08, 277.18, 293.66];
+      const melody = [
+        293.66, 311.13, 369.99, 392.00, 440.00, 392.00, 369.99, 311.13,
+        293.66, 369.99, 440.00, 466.16, 554.37, 466.16, 440.00, 369.99
+      ];
+      
+      pharaohMusicStep = 0;
+      pharaohMusicInterval = setInterval(() => {
+        try {
+          if (_ac.state === 'suspended') return;
+          const t = _ac.currentTime;
+          
+          if (pharaohMusicStep % 4 === 0) {
+            const bo = _ac.createOscillator(), bg = _ac.createGain();
+            bo.connect(bg); bg.connect(_ac.destination);
+            bo.type = 'sawtooth';
+            bo.frequency.setValueAtTime(73.42, t);
+            const filter = _ac.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(200, t);
+            bo.disconnect(bg);
+            bo.connect(filter);
+            filter.connect(bg);
+            bg.gain.setValueAtTime(0.12, t);
+            bg.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+            bo.start(t); bo.stop(t + 0.95);
+          }
+          
+          if (pharaohMusicStep % 2 === 0) {
+            const idx = Math.floor(pharaohMusicStep / 2) % melody.length;
+            const freq = melody[idx];
+            const mo = _ac.createOscillator(), mg = _ac.createGain();
+            mo.connect(mg); mg.connect(_ac.destination);
+            mo.type = 'triangle';
+            mo.frequency.setValueAtTime(freq, t);
+            if (idx > 0) {
+              const prevFreq = melody[idx - 1];
+              mo.frequency.setValueAtTime(prevFreq, t);
+              mo.frequency.exponentialRampToValueAtTime(freq, t + 0.1);
+            }
+            mg.gain.setValueAtTime(0.07, t);
+            mg.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+            mo.start(t); mo.stop(t + 0.4);
+          }
+          
+          if (pharaohMusicStep % 2 !== 0) {
+            const no = _ac.createOscillator(), ng = _ac.createGain();
+            no.connect(ng); ng.connect(_ac.destination);
+            no.type = 'triangle';
+            no.frequency.setValueAtTime(4000 + Math.random() * 2000, t);
+            ng.gain.setValueAtTime(0.015, t);
+            ng.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+            no.start(t); no.stop(t + 0.05);
+          }
+          
+          pharaohMusicStep++;
+        } catch(e) {}
+      }, 240);
+    }
+    
+    function stopPharaohMusic() {
+      if (pharaohMusicInterval) {
+        clearInterval(pharaohMusicInterval);
+        pharaohMusicInterval = null;
+      }
+    }
+
+    function playPharaohSuccessSound() {
+      const fanfare = [392, 494, 587, 784, 988, 1174];
+      fanfare.forEach((f, i) => setTimeout(() => {
+        const o = _ac.createOscillator(), g = _ac.createGain(), t = _ac.currentTime;
+        o.connect(g); g.connect(_ac.destination);
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f, t);
+        g.gain.setValueAtTime(0.15, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        o.start(t); o.stop(t + 0.42);
+      }, i * 90));
+    }
+    
+    function playPharaohFailSound() {
+      const t = _ac.currentTime;
+      for(let i=0; i<8; i++) {
+        setTimeout(() => {
+          const o = _ac.createOscillator(), g = _ac.createGain(), now = _ac.currentTime;
+          o.connect(g); g.connect(_ac.destination);
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(150 - i * 12 + Math.random() * 50, now);
+          g.gain.setValueAtTime(0.18, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          o.start(now); o.stop(now + 0.4);
+        }, i * 60);
+      }
+      setTimeout(() => {
+        const o = _ac.createOscillator(), g = _ac.createGain(), now = _ac.currentTime;
+        o.connect(g); g.connect(_ac.destination);
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(3500 + Math.random()*1500, now);
+        g.gain.setValueAtTime(0.04, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+        o.start(now); o.stop(now + 0.8);
+      }, 100);
+    }
+
     // Stopwatch Controls
     function triggerStopwatch() {
       if (!currentGameId) return;
@@ -4031,12 +4258,12 @@
       document.getElementById('pharaoh-result-screen').style.display = 'none';
       const btn = document.getElementById('pharaoh-chrono-btn');
       if (btn) {
-        btn.className = 'stopwatch-btn';
+        btn.className = 'pharaoh-btn';
         btn.innerHTML = '<i class="fa-solid fa-hourglass-start"></i>';
       }
       const status = document.getElementById('pharaoh-chrono-status');
       if (status) {
-        status.innerText = 'Kliknij lub naciśnij SPACJĘ aby wystartować';
+        status.innerText = 'Dotknij artefaktu, aby rozpocząć rytuał';
       }
     }
 
@@ -4047,15 +4274,16 @@
 
       if (!pharaohRunning) {
         pharaohRunning = true;
+        playStopwatchStartSound();
         pharaohStartTime = performance.now();
         btn.classList.add('running');
         btn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i>';
-        status.innerText = 'Stoper działa w ciemno! Zatrzymaj spacją lub kliknięciem!';
+        status.innerText = 'Rytuał w toku... Zatrzymaj w ciemno!';
       } else {
         pharaohRunning = false;
         btn.classList.remove('running');
         btn.innerHTML = '<i class="fa-solid fa-hourglass-end"></i>';
-        status.innerText = 'Sprawdzanie wyniku...';
+        status.innerText = 'Sprawdzanie woli bogów...';
 
         const stopTime = performance.now();
         const elapsed = (stopTime - pharaohStartTime) / 1000;
@@ -4069,16 +4297,17 @@
         const yourTimeDisplay = document.getElementById('pharaoh-your-time');
         const yourDiffDisplay = document.getElementById('pharaoh-your-diff');
 
-        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(2) + 's';
-        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(2) + 's';
+        if (yourTimeDisplay) yourTimeDisplay.innerText = elapsed.toFixed(3) + 's';
+        if (yourDiffDisplay) yourDiffDisplay.innerText = (diff >= 0 ? '+' : '') + diff.toFixed(3) + 's';
 
         if (isIdeal) {
+          playPharaohSuccessSound();
           if (resultTitle) {
             resultTitle.innerText = 'SUKCES!';
             resultTitle.style.color = '#ffd700';
             resultTitle.style.textShadow = '0 0 15px #ffd700';
           }
-          showToast('Niesamowite! Trafiłeś idealnie! +1 Gwiazdka!');
+          showToast('Bogowie są zadowoleni! Otrzymujesz +1 Gwiazdę!');
           
           // Call API to claim star
           try {
@@ -4097,8 +4326,9 @@
             console.error('Error claiming pharaoh star', err);
           }
         } else {
+          playPharaohFailSound();
           if (resultTitle) {
-            resultTitle.innerText = 'SPRÓBUJ PONOWNIE!';
+            resultTitle.innerText = 'KLĄTWA FARAONA!';
             resultTitle.style.color = 'var(--red-primary)';
             resultTitle.style.textShadow = '0 0 15px var(--red-primary)';
           }
@@ -5708,6 +5938,8 @@
 
   <script>
     // ═══ PARTICLES CANVAS ═══
+    let particleStormActive = false;
+    let particleColorsOverride = null;
     (function() {
       const canvas = document.getElementById('particles-canvas');
       if (!canvas) return;
@@ -5717,7 +5949,7 @@
       window.addEventListener('resize', () => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; });
 
       const COLORS = ['rgba(200,170,110,', 'rgba(10,200,185,', 'rgba(240,208,128,'];
-      const COUNT = 80;
+      const COUNT = 120;
       const particles = Array.from({ length: COUNT }, () => ({
         x: Math.random() * W,
         y: Math.random() * H,
@@ -5733,9 +5965,23 @@
         particles.forEach(p => {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = p.color + p.alpha + ')';
+          
+          let col = p.color;
+          if (particleColorsOverride) {
+            col = particleColorsOverride[Math.floor(Math.random() * particleColorsOverride.length)];
+          }
+          ctx.fillStyle = col + p.alpha + ')';
           ctx.fill();
-          p.x += p.dx; p.y += p.dy;
+          
+          if (particleStormActive) {
+            p.x += p.dx * 1.5 - 2.5;
+            p.y += p.dy * 1.5 + 1.2;
+            p.r = Math.random() * 2.2 + 0.5;
+          } else {
+            p.x += p.dx;
+            p.y += p.dy;
+          }
+          
           if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
           if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
         });
