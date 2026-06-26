@@ -1228,6 +1228,81 @@
       transform: translateY(0);
       opacity: 1;
     }
+
+    /* Shop Sub-tabs */
+    .shop-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+      border-bottom: 1px solid rgba(200, 170, 110, 0.15);
+      padding-bottom: 15px;
+    }
+    .shop-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-title);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 8px 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+      border-bottom: 2px solid transparent;
+    }
+    .shop-tab-btn:hover, .shop-tab-btn.active {
+      color: var(--gold-primary);
+      text-shadow: 0 0 8px rgba(200, 170, 110, 0.4);
+    }
+    .shop-tab-btn.active {
+      border-bottom: 2px solid var(--gold-primary);
+    }
+
+    /* Pharaoh Skill Overlay */
+    .pharaoh-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(1, 10, 19, 0.96);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    .pharaoh-image-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      animation: pharaohAppear 0.1s ease-out;
+    }
+    .pharaoh-img {
+      max-height: 65vh;
+      max-width: 85vw;
+      object-fit: contain;
+      filter: drop-shadow(0 0 30px rgba(200, 170, 110, 0.8));
+      border: 3px solid var(--gold-primary);
+      border-radius: 12px;
+      box-shadow: 0 0 50px rgba(200, 170, 110, 0.5);
+    }
+    .pharaoh-counter {
+      margin-top: 20px;
+      font-size: 6rem;
+      font-family: var(--font-title);
+      color: #ffd700;
+      text-shadow: 0 0 20px #ffd700, 0 0 45px #ffaa00;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+    @keyframes pharaohAppear {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -1396,8 +1471,12 @@
     <!-- Shop View -->
     <div id="shop-view" class="view">
       <div class="lobby-header">
-        <h2>Sklep bohaterów</h2>
-        <p>Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!</p>
+        <h2 id="shop-title-text">Sklep bohaterów</h2>
+        <p id="shop-desc-text">Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!</p>
+        <div class="shop-tabs">
+          <button id="shop-btn-champs" class="shop-tab-btn active" onclick="switchShopSubTab('champions')">Bohaterowie</button>
+          <button id="shop-btn-skills" class="shop-tab-btn" onclick="switchShopSubTab('skills')">Umiejętności</button>
+        </div>
       </div>
       <div class="shop-grid" id="shop-items-container">
         <!-- Dynamically generated shop cards -->
@@ -1493,6 +1572,14 @@
     </div>
   </div>
 
+  <!-- Pharaoh Overlay -->
+  <div id="pharaoh-overlay" class="pharaoh-overlay">
+    <div class="pharaoh-image-container">
+      <img src="/assets/images/pharaoh.png" class="pharaoh-img" alt="Faraon">
+      <div id="pharaoh-counter" class="pharaoh-counter">0.000s</div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast" id="system-toast">Powiadomienie</div>
 
@@ -1517,6 +1604,7 @@
     let startTime = 0;
     let elapsed = 0;
     let skillUsedInMatch = false;
+    let extraSkillUsedInMatch = false;
     let speedupMultiplier = 1.0;
 
     // Available Champions data
@@ -1526,6 +1614,19 @@
       { name: 'Tony Soprano', cost: 4000, image: '/assets/images/tony.png', skillImage: '/assets/images/skill_tony.png', desc: 'Dodaje rywalowi 1.00 s kary do wyniku i ukrywa przed nim czas docelowy.' },
       { name: 'WhiteToes', cost: 5000, image: '/assets/images/whitetoes.png', skillImage: '/assets/images/skill_whitetoes.png', desc: 'Czaruje rywala. Czas na stoperze przeciwnika leci 2x szybciej (psuje mu obliczenia)!' }
     ];
+
+    // Available Skills data
+    const shopSkills = [
+      {
+        name: 'Piramida',
+        character: 'Zygzak',
+        cost: 25,
+        image: '/assets/images/pharaoh.png',
+        desc: 'Specjalna umiejętność do postaci Zygzak pod przyciskiem [N]. Gracz posiadający ją na koncie może raz na grę kliknąć [N], co na 0,02 sekundy odsłoni licznik na tle wielkiego Faraona.'
+      }
+    ];
+
+    let activeShopSubTab = 'champions';
 
     // Check existing auth in localStorage
     window.addEventListener('DOMContentLoaded', () => {
@@ -1586,6 +1687,7 @@
       if (!currentUser.activeChampion) {
         currentUser.activeChampion = 'Zygzak';
       }
+      currentUser.unlocked_skills = currentUser.unlocked_skills || [];
 
       updateUserUIElements();
       
@@ -1611,6 +1713,7 @@
         currentRole = role;
         currentOpponent = opponent;
         skillUsedInMatch = false;
+        extraSkillUsedInMatch = false;
 
         document.getElementById('queue-screen').style.display = 'none';
         clearInterval(queueInterval);
@@ -1840,7 +1943,7 @@
       }
     }
 
-    // Listen to Spacebar for stopwatch & 'M' for skills
+    // Listen to Spacebar for stopwatch & 'M' for skills & 'N' for extra skills
     window.addEventListener('keydown', (e) => {
       // Avoid firing when typing in auth forms
       if (document.activeElement.tagName === 'INPUT') return;
@@ -1854,43 +1957,104 @@
         e.preventDefault();
         useActiveSkill();
       }
+
+      if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        useExtraSkill();
+      }
     });
 
     // Shop render and buy functions
+    // Shop render and buy functions
+    function switchShopSubTab(subTab) {
+      activeShopSubTab = subTab;
+      
+      const champsBtn = document.getElementById('shop-btn-champs');
+      const skillsBtn = document.getElementById('shop-btn-skills');
+      if (champsBtn) champsBtn.classList.toggle('active', subTab === 'champions');
+      if (skillsBtn) skillsBtn.classList.toggle('active', subTab === 'skills');
+      
+      const title = document.getElementById('shop-title-text');
+      const desc = document.getElementById('shop-desc-text');
+      if (subTab === 'champions') {
+        if (title) title.innerText = 'Sklep bohaterów';
+        if (desc) desc.innerText = 'Kupuj postacie za monety, aby odblokować unikalne i potężne skille aktywowane klawiszem [M] raz w meczu!';
+      } else {
+        if (title) title.innerText = 'Sklep umiejętności';
+        if (desc) desc.innerText = 'Kupuj specjalne umiejętności za gwiazdy zdobyte w meczach rankingowych i draftowych!';
+      }
+      
+      renderShop();
+    }
+
     function renderShop() {
       const container = document.getElementById('shop-items-container');
+      if (!container) return;
       container.innerHTML = '';
 
-      champions.forEach(champ => {
-        const isUnlocked = currentUser && currentUser.unlocked_characters.includes(champ.name);
-        const isActive = currentUser && currentUser.activeChampion === champ.name;
-        
-        let btnHtml = '';
-        if (isActive) {
-          btnHtml = `<button class="buy-btn active-champ">Wybrany</button>`;
-        } else if (isUnlocked) {
-          btnHtml = `<button class="buy-btn unlocked" onclick="selectChampion('${champ.name}')">Wybierz</button>`;
-        } else {
-          const canAfford = currentUser && currentUser.coins >= champ.cost;
-          btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyChampion('${champ.name}', ${champ.cost})">Kup</button>`;
-        }
+      if (activeShopSubTab === 'champions') {
+        champions.forEach(champ => {
+          const isUnlocked = currentUser && currentUser.unlocked_characters.includes(champ.name);
+          const isActive = currentUser && currentUser.activeChampion === champ.name;
+          
+          let btnHtml = '';
+          if (isActive) {
+            btnHtml = `<button class="buy-btn active-champ">Wybrany</button>`;
+          } else if (isUnlocked) {
+            btnHtml = `<button class="buy-btn unlocked" onclick="selectChampion('${champ.name}')">Wybierz</button>`;
+          } else {
+            const canAfford = currentUser && currentUser.coins >= champ.cost;
+            btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyChampion('${champ.name}', ${champ.cost})">Kup</button>`;
+          }
 
-        container.innerHTML += `
-          <div class="shop-card">
-            <div>
-              <div class="shop-card-icon">
-                <img src="${champ.image}">
+          container.innerHTML += `
+            <div class="shop-card">
+              <div>
+                <div class="shop-card-icon">
+                  <img src="${champ.image}">
+                </div>
+                <h3>${champ.name}</h3>
+                <div class="champ-price">
+                  <i class="fa-solid fa-coins"></i> ${champ.cost === 0 ? 'Darmowy' : champ.cost}
+                </div>
+                <p class="champ-skill-desc">${champ.desc}</p>
               </div>
-              <h3>${champ.name}</h3>
-              <div class="champ-price">
-                <i class="fa-solid fa-coins"></i> ${champ.cost === 0 ? 'Darmowy' : champ.cost}
-              </div>
-              <p class="champ-skill-desc">${champ.desc}</p>
+              ${btnHtml}
             </div>
-            ${btnHtml}
-          </div>
-        `;
-      });
+          `;
+        });
+      } else {
+        shopSkills.forEach(skill => {
+          const isUnlocked = currentUser && currentUser.unlocked_skills && currentUser.unlocked_skills.includes(skill.name);
+          
+          let btnHtml = '';
+          if (isUnlocked) {
+            btnHtml = `<button class="buy-btn unlocked" style="border-color: #ffd700; color: #ffd700;">Odblokowano</button>`;
+          } else {
+            const canAfford = currentUser && (currentUser.stars || 0) >= skill.cost;
+            btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buySkill('${skill.name}', ${skill.cost})">Kup za Gwiazdki</button>`;
+          }
+
+          container.innerHTML += `
+            <div class="shop-card">
+              <div>
+                <div class="shop-card-icon" style="border-color: #ffd700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.35);">
+                  <img src="${skill.image}">
+                </div>
+                <h3>${skill.name}</h3>
+                <div style="font-size: 0.85rem; color: var(--cyan-primary); margin-bottom: 5px; text-transform: uppercase; font-weight: 600;">
+                  Dla postaci: ${skill.character}
+                </div>
+                <div class="champ-price" style="color: #ffd700;">
+                  <i class="fa-solid fa-star"></i> ${skill.cost} Gwiazd
+                </div>
+                <p class="champ-skill-desc">${skill.desc}</p>
+              </div>
+              ${btnHtml}
+            </div>
+          `;
+        });
+      }
     }
 
     async function buyChampion(name, cost) {
@@ -1922,6 +2086,35 @@
       }
     }
 
+    async function buySkill(name, cost) {
+      if ((currentUser.stars || 0) < cost) {
+        showToast('Masz za mało gwiazdek!');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/buy-skill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, skillName: name, cost })
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+          currentUser.stars = data.stars;
+          currentUser.unlocked_skills = data.unlocked_skills;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          renderShop();
+          showToast(`Odblokowano umiejętność: ${name}!`);
+        } else {
+          showToast(data.error);
+        }
+      } catch (err) {
+        showToast('Błąd zakupu');
+      }
+    }
+
     function selectChampion(name) {
       currentUser.activeChampion = name;
       localStorage.setItem('hextech_user', JSON.stringify(currentUser));
@@ -1932,6 +2125,7 @@
     // Render skill HUD in the Game View
     function renderSkillHUD() {
       const hud = document.getElementById('skill-hud-list');
+      if (!hud) return;
       hud.innerHTML = '';
 
       const champ = champions.find(c => c.name === currentUser.activeChampion);
@@ -1949,6 +2143,20 @@
           </div>
         </div>
       `;
+
+      if (currentUser.activeChampion === 'Zygzak' && currentUser.unlocked_skills && currentUser.unlocked_skills.includes('Piramida')) {
+        const extraDisabledClass = extraSkillUsedInMatch ? 'disabled' : '';
+        hud.innerHTML += `
+          <div class="hud-skill-btn ${extraDisabledClass}" onclick="useExtraSkill()">
+            <img src="/assets/images/pharaoh.png">
+            <span class="key-bind">N</span>
+            <div class="tooltip">
+              <strong>Piramida</strong><br>
+              Raz na grę odsłania stoper na 0.02s pod wizerunkiem wielkiego Faraona.
+            </div>
+          </div>
+        `;
+      }
     }
 
     function useActiveSkill() {
@@ -1962,6 +2170,37 @@
         nick: currentUser.nick,
         skill: currentUser.activeChampion
       });
+    }
+
+    function useExtraSkill() {
+      if (!currentGameId || !stopwatchRunning || extraSkillUsedInMatch) return;
+      if (currentUser.activeChampion !== 'Zygzak') return;
+      if (!currentUser.unlocked_skills || !currentUser.unlocked_skills.includes('Piramida')) return;
+
+      extraSkillUsedInMatch = true;
+      renderSkillHUD(); // disable button
+
+      // Calculate elapsed time (handling speedup multipliers if WhiteToes is used against us)
+      const currentElapsed = ((performance.now() - startTime) / 1000) * speedupMultiplier;
+      
+      // Update Pharaoh display count
+      const pharaohCounter = document.getElementById('pharaoh-counter');
+      if (pharaohCounter) {
+        pharaohCounter.innerText = currentElapsed.toFixed(3) + 's';
+      }
+      
+      // Show overlay
+      const overlay = document.getElementById('pharaoh-overlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+      }
+      
+      // Hide after exactly 0.02 seconds (20ms)
+      setTimeout(() => {
+        if (overlay) {
+          overlay.style.display = 'none';
+        }
+      }, 20);
     }
 
     // Profile & History Fetching

@@ -40,12 +40,18 @@ function initializeDatabase() {
         lp INTEGER DEFAULT 0,
         rank TEXT DEFAULT 'Iron 4',
         unlocked_characters TEXT DEFAULT 'Zygzak',
-        stars INTEGER DEFAULT 0
+        stars INTEGER DEFAULT 0,
+        unlocked_skills TEXT DEFAULT ''
       )
     `);
 
     // Ensure stars column exists for older database files
     db.run(`ALTER TABLE users ADD COLUMN stars INTEGER DEFAULT 0`, (err) => {
+      // Ignore if column already exists
+    });
+
+    // Ensure unlocked_skills column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN unlocked_skills TEXT DEFAULT ''`, (err) => {
       // Ignore if column already exists
     });
 
@@ -164,7 +170,8 @@ app.post('/api/login', (req, res) => {
         lp: user.lp,
         rank: user.rank,
         stars: user.stars || 0,
-        unlocked_characters: user.unlocked_characters.split(',')
+        unlocked_characters: user.unlocked_characters.split(','),
+        unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : []
       });
     });
   });
@@ -172,7 +179,7 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/profile/:nick', (req, res) => {
   const { nick } = req.params;
-  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters FROM users WHERE nick = ?', [nick], (err, user) => {
+  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills FROM users WHERE nick = ?', [nick], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'Player not found' });
 
@@ -188,6 +195,7 @@ app.get('/api/profile/:nick', (req, res) => {
           rank: user.rank,
           stars: user.stars || 0,
           unlocked_characters: user.unlocked_characters.split(','),
+          unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
           history: matches
         });
       }
@@ -226,6 +234,35 @@ app.post('/api/buy', (req, res) => {
       function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ coins: newCoins, unlocked_characters: characters });
+      }
+    );
+  });
+});
+
+app.post('/api/buy-skill', (req, res) => {
+  const { nick, skillName, cost } = req.body;
+  db.get('SELECT stars, unlocked_skills FROM users WHERE nick = ?', [nick], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let skills = user.unlocked_skills ? user.unlocked_skills.split(',') : [];
+    if (skills.includes(skillName)) {
+      return res.status(400).json({ error: 'Already unlocked' });
+    }
+    if ((user.stars || 0) < cost) {
+      return res.status(400).json({ error: 'Not enough stars' });
+    }
+
+    skills.push(skillName);
+    const newStars = user.stars - cost;
+    const newSkillsStr = skills.join(',');
+
+    db.run(
+      'UPDATE users SET stars = ?, unlocked_skills = ? WHERE nick = ?',
+      [newStars, newSkillsStr, nick],
+      function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ stars: newStars, unlocked_skills: skills });
       }
     );
   });
