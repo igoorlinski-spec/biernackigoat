@@ -364,6 +364,8 @@ app.post('/api/claim-daily-chest', (req, res) => {
       }
     );
   });
+});
+
 app.post('/api/blackjack', (req, res) => {
   const { nick, bet } = req.body;
   if (!nick || !bet) return res.status(400).json({ error: 'Nick and bet are required' });
