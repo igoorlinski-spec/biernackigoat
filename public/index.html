@@ -4616,7 +4616,11 @@
         });
       } else if (activeShopSubTab === 'icons') {
         shopIcons.forEach(icon => {
-          const isUnlocked = currentUser && currentUser.unlocked_icons && currentUser.unlocked_icons.includes(icon.name);
+          const owned = currentUser && currentUser.unlocked_icons 
+            ? (Array.isArray(currentUser.unlocked_icons) ? currentUser.unlocked_icons : currentUser.unlocked_icons.split(','))
+            : [];
+          const count = owned.filter(i => i === icon.name).length;
+          const isUnlocked = count > 0;
           const isActive = currentUser && currentUser.activeIcon === icon.name;
           
           let btnHtml = '';
@@ -4641,10 +4645,11 @@
           container.innerHTML += `
             <div class="shop-card" style="${cardStyle}">
               <div>
-                <div class="shop-card-icon" style="border-radius: 50%; overflow: hidden; border-width: 2px; ${icon.isLegendary ? 'border-color: #ffd700; box-shadow: 0 0 10px #ffd700;' : ''}">
-                  <img src="${icon.image}" style="border-radius: 50%; object-fit: cover;">
+                <div class="shop-card-icon" style="position: relative; border-radius: 50%; overflow: visible; border-width: 2px; ${icon.isLegendary ? 'border-color: #ffd700; box-shadow: 0 0 10px #ffd700;' : ''}">
+                  <img src="${icon.image}" style="border-radius: 50%; object-fit: cover; width: 100%; height: 100%;">
+                  ${count > 1 ? `<span style="position: absolute; bottom: -5px; right: -5px; background: var(--gold-primary); color: #000; font-size: 0.75rem; font-weight: bold; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; border: 2px solid #010a13; box-shadow: 0 0 5px rgba(0,0,0,0.5);">x${count}</span>` : ''}
                 </div>
-                <h3>${icon.displayName}</h3>
+                <h3 style="margin-top: 10px;">${icon.displayName}</h3>
                 <div class="champ-price">
                   ${priceText}
                 </div>
@@ -6550,17 +6555,23 @@
       offeredSelect.innerHTML = '';
       reqSelect.innerHTML = '';
 
-      // Populate Offered dropdown based on unlocked icons
+      // Populate Offered dropdown based on unlocked icons (grouped by count)
       if (currentUser && currentUser.unlocked_icons) {
         const owned = Array.isArray(currentUser.unlocked_icons) 
           ? currentUser.unlocked_icons 
           : currentUser.unlocked_icons.split(',');
 
-        owned.forEach(iconName => {
-          // Find displayName
+        const counts = {};
+        owned.forEach(icon => {
+          counts[icon] = (counts[icon] || 0) + 1;
+        });
+
+        Object.keys(counts).forEach(iconName => {
+          const count = counts[iconName];
           const matched = shopIcons.find(i => i.name === iconName);
           const name = matched ? matched.displayName : iconName;
-          offeredSelect.innerHTML += `<option value="${iconName}">${name}</option>`;
+          const label = count > 1 ? `${name} (x${count})` : name;
+          offeredSelect.innerHTML += `<option value="${iconName}">${label}</option>`;
         });
       }
 

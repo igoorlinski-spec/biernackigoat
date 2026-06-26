@@ -469,11 +469,7 @@ app.post('/api/claim-paid-chest', async (req, res) => {
     const isDuplicate = icons.includes(rewardIcon);
 
     let finalCoins = user.coins - cost;
-    if (isDuplicate) {
-      finalCoins += 15; // refund 15 coins for duplicate
-    } else {
-      icons.push(rewardIcon);
-    }
+    icons.push(rewardIcon);
 
     await query(
       'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
@@ -528,11 +524,7 @@ app.post('/api/claim-fame-chest', async (req, res) => {
     const isDuplicate = icons.includes(rewardIcon);
 
     let finalCoins = user.coins - cost;
-    if (isDuplicate) {
-      finalCoins += 40; // refund 40 coins for duplicate (half of 80)
-    } else {
-      icons.push(rewardIcon);
-    }
+    icons.push(rewardIcon);
 
     await query(
       'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
@@ -576,10 +568,13 @@ app.post('/api/trades/create', async (req, res) => {
       return res.status(400).json({ error: 'Nie posiadasz tej ikony' });
     }
     
-    // Remove the icon from user's inventory
-    icons = icons.filter(i => i !== offeredIcon);
+    // Remove one copy of the icon from user's inventory
+    const index = icons.indexOf(offeredIcon);
+    if (index > -1) {
+      icons.splice(index, 1);
+    }
     let activeIcon = user.active_icon;
-    if (activeIcon === offeredIcon) {
+    if (activeIcon === offeredIcon && !icons.includes(offeredIcon)) {
       activeIcon = 'default';
     }
     
