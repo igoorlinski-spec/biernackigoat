@@ -41,7 +41,8 @@ function initializeDatabase() {
         rank TEXT DEFAULT 'Iron 4',
         unlocked_characters TEXT DEFAULT 'Zygzak',
         stars INTEGER DEFAULT 0,
-        unlocked_skills TEXT DEFAULT ''
+        unlocked_skills TEXT DEFAULT '',
+        active_champion TEXT DEFAULT 'Zygzak'
       )
     `);
 
@@ -52,6 +53,11 @@ function initializeDatabase() {
 
     // Ensure unlocked_skills column exists for older database files
     db.run(`ALTER TABLE users ADD COLUMN unlocked_skills TEXT DEFAULT ''`, (err) => {
+      // Ignore if column already exists
+    });
+
+    // Ensure active_champion column exists for older database files
+    db.run(`ALTER TABLE users ADD COLUMN active_champion TEXT DEFAULT 'Zygzak'`, (err) => {
       // Ignore if column already exists
     });
 
@@ -176,7 +182,8 @@ app.post('/api/login', (req, res) => {
         rank: user.rank,
         stars: user.stars || 0,
         unlocked_characters: user.unlocked_characters.split(','),
-        unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : []
+        unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
+        activeChampion: user.active_champion || 'Zygzak'
       });
     });
   });
@@ -184,7 +191,7 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/profile/:nick', (req, res) => {
   const { nick } = req.params;
-  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills FROM users WHERE nick = ?', [nick], (err, user) => {
+  db.get('SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion FROM users WHERE nick = ?', [nick], (err, user) => {
     if (err) return res.status(500).json({ error: err.message });
     if (!user) return res.status(404).json({ error: 'Player not found' });
 
@@ -201,6 +208,7 @@ app.get('/api/profile/:nick', (req, res) => {
           stars: user.stars || 0,
           unlocked_characters: user.unlocked_characters.split(','),
           unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
+          activeChampion: user.active_champion || 'Zygzak',
           history: matches
         });
       }
@@ -209,7 +217,7 @@ app.get('/api/profile/:nick', (req, res) => {
 });
 
 app.get('/api/leaderboard', (req, res) => {
-  db.all('SELECT nick, lp, rank, coins, stars FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100', [], (err, rows) => {
+  db.all('SELECT nick, lp, rank, coins, stars, active_champion FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
@@ -241,6 +249,16 @@ app.post('/api/buy', (req, res) => {
         res.json({ coins: newCoins, unlocked_characters: characters });
       }
     );
+  });
+});
+
+app.post('/api/select-champion', (req, res) => {
+  const { nick, champion } = req.body;
+  if (!nick || !champion) return res.status(400).json({ error: 'Nick and champion are required' });
+
+  db.run('UPDATE users SET active_champion = ? WHERE nick = ?', [champion, nick], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
   });
 });
 

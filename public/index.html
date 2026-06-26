@@ -1588,6 +1588,7 @@
               <th>Gracz</th>
               <th>Ranga</th>
               <th>Punkty LP</th>
+              <th>Postać</th>
               <th>Monety</th>
               <th>Gwiazdy</th>
             </tr>
@@ -2270,11 +2271,22 @@
       }
     }
 
-    function selectChampion(name) {
-      currentUser.activeChampion = name;
-      localStorage.setItem('hextech_user', JSON.stringify(currentUser));
-      renderShop();
-      showToast(`Wybrano postać: ${name}`);
+    async function selectChampion(name) {
+      try {
+        const response = await fetch('/api/select-champion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, champion: name })
+        });
+        if (response.ok) {
+          currentUser.activeChampion = name;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          renderShop();
+          showToast(`Wybrano postać: ${name}`);
+        }
+      } catch (err) {
+        showToast('Błąd wyboru postaci');
+      }
     }
 
     // Render skill HUD in the Game View
@@ -2402,6 +2414,9 @@
               `;
             });
           }
+        } else if (response.status === 404) {
+          logout();
+          showToast('Użytkownik nie istnieje w bazie (baza została zresetowana). Zarejestruj się ponownie.');
         }
       } catch (err) {
         console.error('Failed to fetch profile', err);
@@ -2424,6 +2439,7 @@
                 <td>${row.nick}</td>
                 <td>${row.rank}</td>
                 <td class="lp-cell">${row.lp} LP</td>
+                <td style="color: var(--cyan-primary); font-weight: 600;">${row.active_champion || 'Zygzak'}</td>
                 <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
                 <td><i class="fa-solid fa-star" style="color: #ffd700;"></i> ${row.stars || 0}</td>
               </tr>
