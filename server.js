@@ -43,7 +43,7 @@ function initializeDatabase() {
         stars INTEGER DEFAULT 0,
         unlocked_skills TEXT DEFAULT '',
         active_champion TEXT DEFAULT 'Zygzak',
-        unlocked_icons TEXT DEFAULT '',
+        unlocked_icons TEXT DEFAULT 'dalton,tusk',
         active_icon TEXT DEFAULT 'default',
         last_daily_claim INTEGER DEFAULT 0
       )
@@ -65,7 +65,7 @@ function initializeDatabase() {
     });
 
     // Ensure unlocked_icons column exists for older database files
-    db.run(`ALTER TABLE users ADD COLUMN unlocked_icons TEXT DEFAULT ''`, (err) => {
+    db.run(`ALTER TABLE users ADD COLUMN unlocked_icons TEXT DEFAULT 'dalton,tusk'`, (err) => {
       // Ignore if column already exists
     });
 
@@ -167,8 +167,8 @@ app.post('/api/register', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
 
       db.run(
-        'INSERT INTO users (nick, password) VALUES (?, ?)',
-        [nick, hash],
+        'INSERT INTO users (nick, password, unlocked_icons) VALUES (?, ?, ?)',
+        [nick, hash, 'dalton,tusk'],
         function(err) {
           if (err) return res.status(500).json({ error: err.message });
           res.json({ success: true });
@@ -188,6 +188,10 @@ app.post('/api/login', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!isMatch) return res.status(400).json({ error: 'Incorrect password' });
 
+      let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+      if (!icons.includes('dalton')) icons.push('dalton');
+      if (!icons.includes('tusk')) icons.push('tusk');
+
       res.json({
         nick: user.nick,
         coins: user.coins,
@@ -197,7 +201,7 @@ app.post('/api/login', (req, res) => {
         unlocked_characters: user.unlocked_characters.split(','),
         unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
         activeChampion: user.active_champion || 'Zygzak',
-        unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
+        unlocked_icons: icons,
         activeIcon: user.active_icon || 'default',
         lastDailyClaim: user.last_daily_claim || 0
       });
@@ -229,6 +233,11 @@ app.get('/api/profile/:nick', (req, res) => {
           [nick, nick],
           (err, matches) => {
             if (err) return res.status(500).json({ error: err.message });
+
+            let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+            if (!icons.includes('dalton')) icons.push('dalton');
+            if (!icons.includes('tusk')) icons.push('tusk');
+
             res.json({
               nick: user.nick,
               coins: user.coins,
@@ -238,7 +247,7 @@ app.get('/api/profile/:nick', (req, res) => {
               unlocked_characters: user.unlocked_characters.split(','),
               unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
               activeChampion: user.active_champion || 'Zygzak',
-              unlocked_icons: user.unlocked_icons ? user.unlocked_icons.split(',') : [],
+              unlocked_icons: icons,
               activeIcon: user.active_icon || 'default',
               lastDailyClaim: user.last_daily_claim || 0,
               rankedWins,

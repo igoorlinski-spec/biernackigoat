@@ -1813,6 +1813,8 @@
 
     // Available Icons data
     const shopIcons = [
+      { name: 'dalton', displayName: 'Dalton', image: '/assets/images/dalton.png', cost: 0, isFree: true },
+      { name: 'tusk', displayName: 'Tusk', image: '/assets/images/tusk.png', cost: 0, isFree: true },
       { name: 'okekel', displayName: 'Okekel', image: '/assets/images/okekel.png', cost: 100 },
       { name: 'disco_adamus', displayName: 'Disco Adamus', image: '/assets/images/disco_adamus.png', cost: 100 },
       { name: 'popek', displayName: 'Popek', image: '/assets/images/popek.png', cost: 100 },
@@ -2435,7 +2437,7 @@
                 </div>
                 <h3>${icon.displayName}</h3>
                 <div class="champ-price">
-                  <i class="fa-solid fa-coins"></i> ${icon.cost} Monet
+                  ${icon.isFree ? 'Darmowa' : `<i class="fa-solid fa-coins"></i> ${icon.cost} Monet`}
                 </div>
                 <p class="champ-skill-desc">Unikalna ikona profilowa przedstawiająca: ${icon.displayName}.</p>
               </div>
