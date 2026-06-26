@@ -156,6 +156,21 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.post('/api/admin/give', async (req, res) => {
+  const { secret, nick, coins, stars } = req.body;
+  if (secret !== 'biernacki2024admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await query('SELECT coins, stars FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const newCoins = (result.rows[0].coins || 0) + (parseInt(coins) || 0);
+    const newStars = (result.rows[0].stars || 0) + (parseInt(stars) || 0);
+    await query('UPDATE users SET coins = $1, stars = $2 WHERE nick = $3', [newCoins, newStars, nick]);
+    res.json({ success: true, nick, newCoins, newStars });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/register', async (req, res) => {
   const { nick, email, password } = req.body;
   if (!nick || !email || !password)
