@@ -784,6 +784,58 @@ io.on('connection', (socket) => {
     userIcons[nick] = activeIcon || 'default';
     if (!queues[mode].includes(nick)) queues[mode].push(nick);
     matchmake(mode);
+
+    // Automatic bot fallback after 6 seconds of searching alone
+    setTimeout(() => {
+      if (queues[mode] && queues[mode].includes(nick)) {
+        // Remove from normal queue
+        queues[mode] = queues[mode].filter(n => n !== nick);
+
+        const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        let botNick = 'Bot Ezreal', botChamp = 'Zygzak';
+        if (mode === 'ranked') {
+          const rand = Math.random();
+          if (rand < 0.33) {
+            botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+          } else if (rand < 0.66) {
+            botNick = 'Bot Dushane'; botChamp = 'Dushane';
+          } else {
+            botNick = 'Bot Soprano'; botChamp = 'Tony Soprano';
+          }
+        } else {
+          // Draft mode
+          const rand = Math.random();
+          if (rand < 0.5) {
+            botNick = 'Bot Ezreal'; botChamp = 'Zygzak';
+          } else {
+            botNick = 'Bot Dushane'; botChamp = 'Dushane';
+          }
+        }
+        userChampions[botNick] = botChamp;
+
+        const game = {
+          id: gameId, mode, player1: nick, player2: botNick,
+          scores: { [nick]: 0, [botNick]: 0 }, round: 1, targetTime: 0,
+          roundInputs: {}, skillsUsed: { [nick]: false, [botNick]: false },
+          activeEffects: { [nick]: {}, [botNick]: {} }
+        };
+        activeGames[gameId] = game;
+
+        const s1 = onlineUsers[nick];
+        if (s1) {
+          io.to(s1).emit('match_found', { 
+            gameId, 
+            opponent: botNick, 
+            opponentChamp: botChamp, 
+            opponentIcon: 'default', 
+            yourIcon: userIcons[nick] || 'default', 
+            mode, 
+            role: 'player1' 
+          });
+          startNewRound(gameId);
+        }
+      }
+    }, 6000);
   });
 
   socket.on('leave_queue', ({ mode, nick }) => {
@@ -1034,15 +1086,17 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
     const lpGain = Math.floor(Math.random() * 11) + 20;
     const lpLoss = -(Math.floor(Math.random() * 6) + 15);
 
-    try {
-      const winResult = await query('SELECT rank, lp FROM users WHERE nick = $1', [winnerNick]);
-      if (winResult.rows.length > 0) {
-        const winUser = winResult.rows[0];
-        const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-        await query('UPDATE users SET rank = $1, lp = $2 WHERE nick = $3', [nextW.rank, nextW.lp, winnerNick]);
-        await rewardPlayer(winnerNick, 200, 0, { winner: winnerNick, reward: '+200 Coins', lpChange: lpGain, newRank: nextW.rank, newLp: nextW.lp, prevRank: winUser.rank, prevLp: winUser.lp });
-      }
-    } catch (err) { console.error('Error updating ranked winner:', err.message); }
+    if (!winnerNick.startsWith('Bot')) {
+      try {
+        const winResult = await query('SELECT rank, lp FROM users WHERE nick = $1', [winnerNick]);
+        if (winResult.rows.length > 0) {
+          const winUser = winResult.rows[0];
+          const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
+          await query('UPDATE users SET rank = $1, lp = $2 WHERE nick = $3', [nextW.rank, nextW.lp, winnerNick]);
+          await rewardPlayer(winnerNick, 200, 0, { winner: winnerNick, reward: '+200 Coins', lpChange: lpGain, newRank: nextW.rank, newLp: nextW.lp, prevRank: winUser.rank, prevLp: winUser.lp });
+        }
+      } catch (err) { console.error('Error updating ranked winner:', err.message); }
+    }
 
     if (!loserNick.startsWith('Bot')) {
       try {
