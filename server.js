@@ -67,9 +67,9 @@ function initializeDatabase() {
       )
     `);
 
-    // Reset all users' coins to 0 to clean up older testing accounts
-    db.run(`UPDATE users SET coins = 0`, (err) => {
-      if (err) console.error('Error resetting user coins to 0:', err);
+    // Reset all users' coins and stars to 0 to clean up older testing accounts
+    db.run(`UPDATE users SET coins = 0, stars = 0`, (err) => {
+      if (err) console.error('Error resetting user coins/stars to 0:', err);
     });
   });
 }
@@ -649,6 +649,37 @@ function evaluateRound(gameId) {
   }
 }
 
+function rewardPlayer(nick, coinsToAdd, starsToAdd, gameOverPayload) {
+  db.get('SELECT coins, stars FROM users WHERE nick = ?', [nick], (err, row) => {
+    if (err) {
+      console.error(`Error fetching stats for rewarding ${nick}:`, err);
+      return;
+    }
+    if (!row) {
+      console.error(`Player ${nick} not found for rewarding.`);
+      return;
+    }
+
+    const newCoins = Math.max(0, (row.coins || 0) + coinsToAdd);
+    const newStars = Math.max(0, (row.stars || 0) + starsToAdd);
+
+    db.run(
+      'UPDATE users SET coins = ?, stars = ? WHERE nick = ?',
+      [newCoins, newStars, nick],
+      function(err) {
+        if (err) {
+          console.error(`Error updating stats for rewarding ${nick}:`, err);
+          return;
+        }
+        console.log(`Successfully rewarded ${nick}: +${coinsToAdd} coins, +${starsToAdd} stars. New totals: ${newCoins} coins, ${newStars} stars.`);
+        
+        // Emit game_over directly to the player's socket room (more reliable than onlineUsers[nick])
+        io.to(nick).emit('game_over', gameOverPayload);
+      }
+    );
+  });
+}
+
 function finishGame(gameId, winnerNick, isDisconnect = false) {
   const game = activeGames[gameId];
   if (!game) return;
@@ -665,63 +696,53 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         console.error('Error inserting match history:', err);
       }
 
-      // Update statistics synchronously to avoid race conditions when clients fetch profile data
       if (game.mode === 'draft') {
         const rewardW = 100;
         const rewardL = 0;
 
-        db.serialize(() => {
-          // Winner gets +100 coins and +3 stars
-          db.run('UPDATE users SET coins = COALESCE(coins, 0) + ?, stars = COALESCE(stars, 0) + 3 WHERE nick = ?', [rewardW, winnerNick], (err) => {
-            if (err) console.error('Error updating draft winner:', err);
-            const sW = onlineUsers[winnerNick];
-            if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
-          });
-          // Loser gets +0 coins (0 stars)
-          db.run('UPDATE users SET coins = COALESCE(coins, 0) + ? WHERE nick = ?', [rewardL, loserNick], (err) => {
-            if (err) console.error('Error updating draft loser:', err);
-            const sL = onlineUsers[loserNick];
-            if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
-          });
-        });
+        // Reward Winner
+        rewardPlayer(winnerNick, rewardW, 3, { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
+        
+        // Reward Loser (if human)
+        if (loserNick !== 'Bot Ezreal') {
+          rewardPlayer(loserNick, rewardL, 0, { winner: winnerNick, reward: `+${rewardL} Coins` });
+        }
 
       } else if (game.mode === 'ranked') {
         const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
         const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
-        // Winner gets +200 coins and +5 stars
+        // Reward Winner
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
           if (err) console.error('Error fetching ranked winner details:', err);
           if (winUser) {
             const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = COALESCE(coins, 0) + 200, stars = COALESCE(stars, 0) + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], (err) => {
-              if (err) console.error('Error updating ranked winner:', err);
-              const sW = onlineUsers[winnerNick];
-              if (sW) {
-                io.to(sW).emit('game_over', {
-                  winner: winnerNick,
-                  reward: '+200 Coins, +5 Gwiazdy',
-                  lpChange: lpGain,
-                  newRank: nextW.rank,
-                  newLp: nextW.lp,
-                  prevRank: winUser.rank,
-                  prevLp: winUser.lp
-                });
-              }
+            db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], (err) => {
+              if (err) console.error('Error updating ranked winner rank/lp:', err);
+              
+              rewardPlayer(winnerNick, 200, 5, {
+                winner: winnerNick,
+                reward: '+200 Coins, +5 Gwiazdy',
+                lpChange: lpGain,
+                newRank: nextW.rank,
+                newLp: nextW.lp,
+                prevRank: winUser.rank,
+                prevLp: winUser.lp
+              });
             });
           }
         });
 
-        // Loser gets +0 coins (0 stars)
-        db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
-          if (err) console.error('Error fetching ranked loser details:', err);
-          if (loseUser) {
-            const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = COALESCE(coins, 0) + 0 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], (err) => {
-              if (err) console.error('Error updating ranked loser:', err);
-              const sL = onlineUsers[loserNick];
-              if (sL) {
-                io.to(sL).emit('game_over', {
+        // Reward Loser (if human)
+        if (loserNick !== 'Bot Ezreal') {
+          db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
+            if (err) console.error('Error fetching ranked loser details:', err);
+            if (loseUser) {
+              const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
+              db.run('UPDATE users SET rank = ?, lp = ? WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], (err) => {
+                if (err) console.error('Error updating ranked loser rank/lp:', err);
+                
+                rewardPlayer(loserNick, 0, 0, {
                   winner: winnerNick,
                   reward: '+0 Coins',
                   lpChange: lpLoss,
@@ -730,10 +751,10 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
                   prevRank: loseUser.rank,
                   prevLp: loseUser.lp
                 });
-              }
-            });
-          }
-        });
+              });
+            }
+          });
+        }
 
       } else if (game.mode === 'practice') {
         // Practice Mode rewards (+50 coins for win, +10 for loss, 0 stars)
@@ -741,16 +762,9 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const isHumanWinner = winnerNick === humanPlayer;
         const coinsReward = isHumanWinner ? 50 : 10;
 
-        db.run('UPDATE users SET coins = COALESCE(coins, 0) + ? WHERE nick = ?', [coinsReward, humanPlayer], function(err) {
-          if (err) console.error('Error updating practice stats:', err);
-          
-          const sHuman = onlineUsers[humanPlayer];
-          if (sHuman) {
-            io.to(sHuman).emit('game_over', {
-              winner: winnerNick,
-              reward: `+${coinsReward} Coins (Trening)`
-            });
-          }
+        rewardPlayer(humanPlayer, coinsReward, 0, {
+          winner: winnerNick,
+          reward: `+${coinsReward} Coins (Trening)`
         });
       }
     }
