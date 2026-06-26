@@ -3180,11 +3180,15 @@
             <div id="prof-xp-bonus" style="margin-top:3px; font-size:0.8rem; color:#4fc3f7;"></div>
           </div>
 
-          <!-- Icon selector -->
+          <!-- Icon selector / Backpack -->
           <div class="icon-selector-section" style="margin-top: 25px; border-top: 1px solid rgba(200, 170, 110, 0.2); padding-top: 20px;">
-            <h4 style="color: var(--gold-primary); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 15px;">Wybierz ikonę profilu</h4>
-            <div class="icons-list" id="profile-unlocked-icons-list" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-              <!-- Unlocked icons will render here -->
+            <h4 style="color: var(--gold-primary); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+              <span><i class="fa-solid fa-briefcase"></i> Plecak (Ekwipunek)</span>
+              <span style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono);" id="backpack-counter">0 / 50</span>
+            </h4>
+            <!-- Grid of 50 backpack slots -->
+            <div id="profile-backpack-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 320px; margin: 0 auto; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 1px solid rgba(200,170,110,0.15);">
+              <!-- 50 slots will be generated here -->
             </div>
           </div>
         </div>
@@ -5626,35 +5630,74 @@
           // Render badges
           renderBadges(data);
 
-          // Render unlocked icons selector
-          const iconsListContainer = document.getElementById('profile-unlocked-icons-list');
-          if (iconsListContainer) {
-            iconsListContainer.innerHTML = '';
+          // Render unlocked icons selector (backpack / plecak style)
+          const backpackGrid = document.getElementById('profile-backpack-grid');
+          const backpackCounter = document.getElementById('backpack-counter');
+          if (backpackGrid) {
+            backpackGrid.innerHTML = '';
             
-            // Always allow default
+            const unlockedIcons = data.unlocked_icons 
+              ? (Array.isArray(data.unlocked_icons) ? data.unlocked_icons : data.unlocked_icons.split(',').filter(x => x)) 
+              : [];
+            
+            // Total slots to render
+            const totalSlots = 50;
+            let filledSlots = 0;
+
+            // Slot 1: Default Icon
             const isDefaultActive = !data.activeIcon || data.activeIcon === 'default';
-            iconsListContainer.innerHTML += `
-              <div class="profile-mini-icon-wrapper" style="position: relative; cursor: pointer;" onclick="selectIcon('default')">
-                <div class="profile-mini-icon ${isDefaultActive ? 'active' : ''}" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid ${isDefaultActive ? 'var(--gold-primary)' : 'var(--text-muted)'}; display: flex; justify-content: center; align-items: center; background: #000; box-shadow: ${isDefaultActive ? '0 0 10px var(--gold-primary)' : 'none'};">
-                  <i class="fa-solid fa-user-shield" style="color: ${isDefaultActive ? 'var(--gold-primary)' : 'var(--text-muted)'};"></i>
-                </div>
+            const defaultSlotHtml = `
+              <div onclick="selectIcon('default')" style="
+                width: 52px; height: 52px; background: rgba(0,0,0,0.7); 
+                border: 2px solid ${isDefaultActive ? 'var(--gold-primary)' : 'rgba(255,255,255,0.1)'}; 
+                border-radius: 6px; display: flex; justify-content: center; align-items: center; 
+                cursor: pointer; position: relative; box-shadow: ${isDefaultActive ? '0 0 10px var(--gold-primary)' : 'none'};
+                transition: all 0.2s;
+              ">
+                <i class="fa-solid fa-user-shield" style="color: ${isDefaultActive ? 'var(--gold-primary)' : '#555'}; font-size: 1.25rem;"></i>
               </div>
             `;
+            backpackGrid.innerHTML += defaultSlotHtml;
+            filledSlots++;
 
-            const unlockedIcons = data.unlocked_icons || [];
-            unlockedIcons.forEach(iconName => {
-              const iconData = shopIcons.find(i => i.name === iconName);
-              if (iconData) {
+            // Slots 2-50: Unlocked Icons
+            for (let i = 0; i < totalSlots - 1; i++) {
+              if (i < unlockedIcons.length) {
+                const iconName = unlockedIcons[i];
+                const iconData = shopIcons.find(x => x.name === iconName);
+                const displayName = iconData ? iconData.displayName : iconName;
+                const image = iconData ? iconData.image : `/assets/images/${iconName}.png`;
+                const isLegendary = iconData ? iconData.isLegendary : false;
                 const isActive = data.activeIcon === iconName;
-                iconsListContainer.innerHTML += `
-                  <img class="profile-mini-icon ${isActive ? 'active' : ''}" 
-                       src="${iconData.image}" 
-                       alt="${iconData.displayName}" 
-                       style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid ${isActive ? 'var(--gold-primary)' : 'var(--text-muted)'}; cursor: pointer; transition: all 0.2s ease; object-fit: cover; box-shadow: ${isActive ? '0 0 10px var(--gold-primary)' : 'none'};" 
-                       onclick="selectIcon('${iconName}')">
+                
+                const slotStyle = `
+                  width: 52px; height: 52px; background: rgba(0,0,0,0.7);
+                  border: 2px solid ${isActive ? 'var(--gold-primary)' : (isLegendary ? '#8a2be2' : 'rgba(255,255,255,0.1)')};
+                  border-radius: 6px; overflow: hidden; cursor: pointer; position: relative;
+                  box-shadow: ${isActive ? '0 0 10px var(--gold-primary)' : 'none'};
+                  transition: all 0.2s;
+                `;
+
+                backpackGrid.innerHTML += `
+                  <div onclick="selectIcon('${iconName}')" style="${slotStyle}" title="${displayName}">
+                    <img src="${image}" style="width: 100%; height: 100%; object-fit: cover;">
+                  </div>
+                `;
+                filledSlots++;
+              } else {
+                // Empty slot
+                backpackGrid.innerHTML += `
+                  <div style="
+                    width: 52px; height: 52px; background: rgba(255,255,255,0.02); 
+                    border: 1px dashed rgba(255,255,255,0.07); border-radius: 6px;
+                  "></div>
                 `;
               }
-            });
+            }
+
+            if (backpackCounter) {
+              backpackCounter.innerText = `${filledSlots} / ${totalSlots}`;
+            }
           }
 
           // History list
