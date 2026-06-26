@@ -2075,6 +2075,8 @@
     function switchTab(tab) {
       activeTab = tab;
       // Mark active header tab button
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => btn.classList.remove('active'));
       const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')));
       if (clickedBtn) clickedBtn.classList.add('active');
 
