@@ -662,16 +662,16 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
 
       // Update statistics synchronously to avoid race conditions when clients fetch profile data
       if (game.mode === 'draft') {
-        const rewardW = game.scores[winnerNick] * 50 + 250;
-        const rewardL = game.scores[loserNick] * 50;
+        const rewardW = 100;
+        const rewardL = 0;
 
         db.serialize(() => {
-          // Winner gets +250 coins and +3 stars
+          // Winner gets +100 coins and +3 stars
           db.run('UPDATE users SET coins = coins + ?, stars = stars + 3 WHERE nick = ?', [rewardW, winnerNick], () => {
             const sW = onlineUsers[winnerNick];
             if (sW) io.to(sW).emit('game_over', { winner: winnerNick, reward: `+${rewardW} Coins, +3 Gwiazdy` });
           });
-          // Loser gets +rewardL coins (0 stars)
+          // Loser gets +0 coins (0 stars)
           db.run('UPDATE users SET coins = coins + ? WHERE nick = ?', [rewardL, loserNick], () => {
             const sL = onlineUsers[loserNick];
             if (sL) io.to(sL).emit('game_over', { winner: winnerNick, reward: `+${rewardL} Coins` });
@@ -682,16 +682,16 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
         const lpGain = Math.floor(Math.random() * 11) + 20; // 20-30
         const lpLoss = -(Math.floor(Math.random() * 6) + 15); // -15 to -20
 
-        // Winner gets +100 coins and +5 stars
+        // Winner gets +200 coins and +5 stars
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [winnerNick], (err, winUser) => {
           if (winUser) {
             const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 100, stars = stars + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 200, stars = stars + 5 WHERE nick = ?', [nextW.rank, nextW.lp, winnerNick], () => {
               const sW = onlineUsers[winnerNick];
               if (sW) {
                 io.to(sW).emit('game_over', {
                   winner: winnerNick,
-                  reward: '+100 Coins, +5 Gwiazdy',
+                  reward: '+200 Coins, +5 Gwiazdy',
                   lpChange: lpGain,
                   newRank: nextW.rank,
                   newLp: nextW.lp,
@@ -703,16 +703,16 @@ function finishGame(gameId, winnerNick, isDisconnect = false) {
           }
         });
 
-        // Loser gets +20 coins (0 stars)
+        // Loser gets +0 coins (0 stars)
         db.get('SELECT rank, lp FROM users WHERE nick = ?', [loserNick], (err, loseUser) => {
           if (loseUser) {
             const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
-            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 20 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
+            db.run('UPDATE users SET rank = ?, lp = ?, coins = coins + 0 WHERE nick = ?', [nextL.rank, nextL.lp, loserNick], () => {
               const sL = onlineUsers[loserNick];
               if (sL) {
                 io.to(sL).emit('game_over', {
                   winner: winnerNick,
-                  reward: '+20 Coins',
+                  reward: '+0 Coins',
                   lpChange: lpLoss,
                   newRank: nextL.rank,
                   newLp: nextL.lp,
