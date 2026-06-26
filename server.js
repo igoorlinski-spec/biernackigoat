@@ -1627,15 +1627,16 @@ function evaluateRound(gameId) {
 async function rewardPlayer(nick, coinsToAdd, starsToAdd, gameOverPayload) {
   try {
     const result = await query('SELECT coins, stars FROM users WHERE nick = $1', [nick]);
-    if (result.rows.length === 0) return;
-    const row = result.rows[0];
-    const newCoins = Math.max(0, (row.coins || 0) + coinsToAdd);
-    const newStars = Math.max(0, (row.stars || 0) + starsToAdd);
-    await query('UPDATE users SET coins = $1, stars = $2 WHERE nick = $3', [newCoins, newStars, nick]);
-    io.to(nick).emit('game_over', gameOverPayload);
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+      const newCoins = Math.max(0, (row.coins || 0) + coinsToAdd);
+      const newStars = Math.max(0, (row.stars || 0) + starsToAdd);
+      await query('UPDATE users SET coins = $1, stars = $2 WHERE nick = $3', [newCoins, newStars, nick]);
+    }
   } catch (err) {
     console.error(`Error rewarding ${nick}:`, err.message);
   }
+  io.to(nick).emit('game_over', gameOverPayload);
 }
 
 async function finishGame(gameId, winnerNick, isDisconnect = false) {
@@ -1671,8 +1672,13 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
           const nextW = calculateNewRank(winUser.rank, winUser.lp, lpGain);
           await query('UPDATE users SET rank = $1, lp = $2 WHERE nick = $3', [nextW.rank, nextW.lp, winnerNick]);
           await rewardPlayer(winnerNick, 200, 0, { winner: winnerNick, reward: '+200 Coins', lpChange: lpGain, newRank: nextW.rank, newLp: nextW.lp, prevRank: winUser.rank, prevLp: winUser.lp });
+        } else {
+          await rewardPlayer(winnerNick, 0, 0, { winner: winnerNick, reward: '+0 Coins', lpChange: lpGain, newRank: 'Iron 4', newLp: 0, prevRank: 'Iron 4', prevLp: 0 });
         }
-      } catch (err) { console.error('Error updating ranked winner:', err.message); }
+      } catch (err) {
+        console.error('Error updating ranked winner:', err.message);
+        await rewardPlayer(winnerNick, 0, 0, { winner: winnerNick, reward: '+0 Coins', lpChange: lpGain, newRank: 'Iron 4', newLp: 0, prevRank: 'Iron 4', prevLp: 0 });
+      }
     }
 
     if (!loserNick.startsWith('Bot')) {
@@ -1683,8 +1689,13 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
           const nextL = calculateNewRank(loseUser.rank, loseUser.lp, lpLoss);
           await query('UPDATE users SET rank = $1, lp = $2 WHERE nick = $3', [nextL.rank, nextL.lp, loserNick]);
           await rewardPlayer(loserNick, 0, 0, { winner: winnerNick, reward: '+0 Coins', lpChange: lpLoss, newRank: nextL.rank, newLp: nextL.lp, prevRank: loseUser.rank, prevLp: loseUser.lp });
+        } else {
+          await rewardPlayer(loserNick, 0, 0, { winner: winnerNick, reward: '+0 Coins', lpChange: lpLoss, newRank: 'Iron 4', newLp: 0, prevRank: 'Iron 4', prevLp: 0 });
         }
-      } catch (err) { console.error('Error updating ranked loser:', err.message); }
+      } catch (err) {
+        console.error('Error updating ranked loser:', err.message);
+        await rewardPlayer(loserNick, 0, 0, { winner: winnerNick, reward: '+0 Coins', lpChange: lpLoss, newRank: 'Iron 4', newLp: 0, prevRank: 'Iron 4', prevLp: 0 });
+      }
     }
 
   } else if (game.mode === 'practice') {
