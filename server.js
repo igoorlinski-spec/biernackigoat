@@ -133,6 +133,18 @@ async function initializeDatabase() {
       )
     `);
 
+    await query(`
+      CREATE TABLE IF NOT EXISTS trades (
+        id SERIAL PRIMARY KEY,
+        creator TEXT NOT NULL,
+        offered_icon TEXT NOT NULL,
+        requested_icon TEXT DEFAULT '',
+        requested_coins INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'open',
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('Database initialized successfully.');
   } catch (err) {
     console.error('Database initialization error:', err);
@@ -476,6 +488,229 @@ app.post('/api/claim-paid-chest', async (req, res) => {
       newCoins: finalCoins,
       unlocked_icons: icons
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/claim-fame-chest', async (req, res) => {
+  const { nick } = req.body;
+  if (!nick) return res.status(400).json({ error: 'Nick jest wymagany' });
+  try {
+    const result = await query('SELECT coins, unlocked_icons FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+
+    const cost = 80;
+    if ((user.coins || 0) < cost) {
+      return res.status(400).json({ error: 'Brak monet (wymagane 80 monet)' });
+    }
+
+    let rewardIcon = '';
+    let isLegendary = false;
+
+    const roll = Math.random() * 100;
+    if (roll <= 1.0) {
+      rewardIcon = 'young_maga';
+      isLegendary = true;
+    } else if (roll <= 2.0) {
+      rewardIcon = 'irys';
+      isLegendary = true;
+    } else {
+      const pool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];
+      rewardIcon = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    const isDuplicate = icons.includes(rewardIcon);
+
+    let finalCoins = user.coins - cost;
+    if (isDuplicate) {
+      finalCoins += 40; // refund 40 coins for duplicate (half of 80)
+    } else {
+      icons.push(rewardIcon);
+    }
+
+    await query(
+      'UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3',
+      [finalCoins, icons.join(','), nick]
+    );
+
+    res.json({
+      success: true,
+      rewardIcon,
+      isLegendary,
+      isDuplicate,
+      newCoins: finalCoins,
+      unlocked_icons: icons
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/trades', async (req, res) => {
+  try {
+    const result = await query("SELECT * FROM trades WHERE status = 'open' ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/trades/create', async (req, res) => {
+  const { creator, offeredIcon, requestedIcon, requestedCoins } = req.body;
+  if (!creator || !offeredIcon) {
+    return res.status(400).json({ error: 'Brak wymaganych pól' });
+  }
+  try {
+    const userRes = await query('SELECT unlocked_icons, active_icon FROM users WHERE nick = $1', [creator]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = userRes.rows[0];
+    
+    let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+    if (!icons.includes(offeredIcon)) {
+      return res.status(400).json({ error: 'Nie posiadasz tej ikony' });
+    }
+    
+    // Remove the icon from user's inventory
+    icons = icons.filter(i => i !== offeredIcon);
+    let activeIcon = user.active_icon;
+    if (activeIcon === offeredIcon) {
+      activeIcon = 'default';
+    }
+    
+    await query('UPDATE users SET unlocked_icons = $1, active_icon = $2 WHERE nick = $3', [icons.join(','), activeIcon, creator]);
+    
+    // Save trade offer
+    const coinsReq = parseInt(requestedCoins) || 0;
+    const iconReq = requestedIcon || '';
+    
+    await query(
+      "INSERT INTO trades (creator, offered_icon, requested_icon, requested_coins, status) VALUES ($1, $2, $3, $4, 'open')",
+      [creator, offeredIcon, iconReq, coinsReq]
+    );
+    
+    io.emit('trades_updated');
+    res.json({ success: true, unlocked_icons: icons, active_icon: activeIcon });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/trades/cancel', async (req, res) => {
+  const { nick, tradeId } = req.body;
+  try {
+    const tradeRes = await query('SELECT * FROM trades WHERE id = $1', [tradeId]);
+    if (tradeRes.rows.length === 0) return res.status(404).json({ error: 'Trade not found' });
+    const trade = tradeRes.rows[0];
+    
+    if (trade.creator !== nick) {
+      return res.status(403).json({ error: 'Nie jesteś właścicielem tej oferty' });
+    }
+    
+    if (trade.status !== 'open') {
+      return res.status(400).json({ error: 'Oferta nie jest już aktywna' });
+    }
+    
+    // Mark as cancelled
+    await query("UPDATE trades SET status = 'cancelled' WHERE id = $1", [tradeId]);
+    
+    // Give the offered icon back
+    const userRes = await query('SELECT unlocked_icons FROM users WHERE nick = $1', [nick]);
+    if (userRes.rows.length > 0) {
+      const user = userRes.rows[0];
+      let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
+      if (!icons.includes(trade.offered_icon)) {
+        icons.push(trade.offered_icon);
+      }
+      await query('UPDATE users SET unlocked_icons = $1 WHERE nick = $2', [icons.join(','), nick]);
+    }
+    
+    io.emit('trades_updated');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/trades/accept', async (req, res) => {
+  const { buyer, tradeId } = req.body;
+  try {
+    const tradeRes = await query('SELECT * FROM trades WHERE id = $1', [tradeId]);
+    if (tradeRes.rows.length === 0) return res.status(404).json({ error: 'Trade not found' });
+    const trade = tradeRes.rows[0];
+    
+    if (trade.creator === buyer) {
+      return res.status(400).json({ error: 'Nie możesz zaakceptować własnej oferty' });
+    }
+    
+    if (trade.status !== 'open') {
+      return res.status(400).json({ error: 'Oferta nie jest już aktywna' });
+    }
+    
+    const buyerRes = await query('SELECT coins, unlocked_icons FROM users WHERE nick = $1', [buyer]);
+    if (buyerRes.rows.length === 0) return res.status(404).json({ error: 'Kupujący nie istnieje' });
+    const buyerUser = buyerRes.rows[0];
+    
+    const creatorRes = await query('SELECT coins, unlocked_icons FROM users WHERE nick = $1', [trade.creator]);
+    if (creatorRes.rows.length === 0) return res.status(404).json({ error: 'Sprzedający nie istnieje' });
+    const creatorUser = creatorRes.rows[0];
+    
+    let buyerIcons = buyerUser.unlocked_icons ? buyerUser.unlocked_icons.split(',') : [];
+    let creatorIcons = creatorUser.unlocked_icons ? creatorUser.unlocked_icons.split(',') : [];
+    
+    // Check constraints
+    if (trade.requested_coins > 0) {
+      if (buyerUser.coins < trade.requested_coins) {
+        return res.status(400).json({ error: 'Nie masz wystarczającej ilości monet' });
+      }
+      // Process coins transaction
+      const newBuyerCoins = buyerUser.coins - trade.requested_coins;
+      const newCreatorCoins = creatorUser.coins + trade.requested_coins;
+      
+      // Add offered icon to buyer
+      if (!buyerIcons.includes(trade.offered_icon)) {
+        buyerIcons.push(trade.offered_icon);
+      }
+      
+      await query('UPDATE users SET coins = $1, unlocked_icons = $2 WHERE nick = $3', [newBuyerCoins, buyerIcons.join(','), buyer]);
+      await query('UPDATE users SET coins = $1 WHERE nick = $2', [newCreatorCoins, trade.creator]);
+      
+    } else if (trade.requested_icon) {
+      if (!buyerIcons.includes(trade.requested_icon)) {
+        return res.status(400).json({ error: 'Nie posiadasz wymaganej ikony do wymiany' });
+      }
+      
+      // Process icons exchange
+      // Remove requested icon from buyer
+      buyerIcons = buyerIcons.filter(i => i !== trade.requested_icon);
+      // Give offered icon to buyer
+      if (!buyerIcons.includes(trade.offered_icon)) {
+        buyerIcons.push(trade.offered_icon);
+      }
+      
+      // Give requested icon to creator
+      if (!creatorIcons.includes(trade.requested_icon)) {
+        creatorIcons.push(trade.requested_icon);
+      }
+      
+      // If buyer's active icon was the requested one, reset it to default
+      const buyerActiveRes = await query('SELECT active_icon FROM users WHERE nick = $1', [buyer]);
+      let buyerActive = buyerActiveRes.rows[0]?.active_icon || 'default';
+      if (buyerActive === trade.requested_icon) {
+        buyerActive = 'default';
+      }
+      
+      await query('UPDATE users SET unlocked_icons = $1, active_icon = $2 WHERE nick = $3', [buyerIcons.join(','), buyerActive, buyer]);
+      await query('UPDATE users SET unlocked_icons = $1 WHERE nick = $2', [creatorIcons.join(','), trade.creator]);
+    }
+    
+    // Complete trade
+    await query("UPDATE trades SET status = 'completed' WHERE id = $1", [tradeId]);
+    
+    io.emit('trades_updated');
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

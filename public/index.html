@@ -2484,6 +2484,7 @@
       <button class="tab-btn pharaoh-event-tab-glowing" onclick="switchTab('pharaoh-event')">Event Faraon <i class="fa-solid fa-crown"></i></button>
       <button class="tab-btn" onclick="switchTab('daily-chest')">Skrzynka <i class="fa-solid fa-gift"></i></button>
       <button class="tab-btn" onclick="switchTab('blackjack')">Kasyno <i class="fa-solid fa-coins"></i></button>
+      <button class="tab-btn" onclick="switchTab('trading')">Wymiana <i class="fa-solid fa-arrows-rotate"></i></button>
       <button class="tab-btn" onclick="switchTab('shop')">Sklep</button>
       <button class="tab-btn" onclick="switchTab('profile')">Profil</button>
       <button class="tab-btn" onclick="switchTab('leaderboard')">Ranking</button>
@@ -3277,7 +3278,7 @@
         <p>Odbierz darmowe monety raz na dobę lub otwórz płatną skrzynię z unikalnymi ikonami profilowymi!</p>
       </div>
 
-      <div class="chest-container" style="max-width: 800px; margin: 0 auto 30px auto; background: rgba(0,0,0,0.4); border: 2px solid var(--gold-primary); border-radius: 8px; padding: 25px; text-align: center; box-shadow: 0 0 20px rgba(200,170,110,0.15);">
+      <div class="chest-container" style="max-width: 1000px; margin: 0 auto 30px auto; background: rgba(0,0,0,0.4); border: 2px solid var(--gold-primary); border-radius: 8px; padding: 25px; text-align: center; box-shadow: 0 0 20px rgba(200,170,110,0.15);">
         
         <!-- CS:GO Roulette Viewport -->
         <div class="roulette-viewport" style="position: relative; width: 100%; height: 120px; background: #070f19; border: 1px solid rgba(200, 170, 110, 0.3); border-radius: 4px; overflow: hidden; margin-bottom: 25px;">
@@ -3289,10 +3290,10 @@
           </div>
         </div>
 
-        <!-- Two columns for the chests -->
+        <!-- Three columns for the chests -->
         <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-top: 15px;">
           <!-- Daily Chest Card -->
-          <div style="flex: 1; min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid rgba(200, 170, 110, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+          <div style="flex: 1; min-width: 240px; background: rgba(0,0,0,0.3); border: 1px solid rgba(200, 170, 110, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
             <h4 style="color: var(--gold-primary); margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Codzienna</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Darmowe monety (od 5 do 100) dostępne raz na 24 godziny.</p>
             <div class="chest-action-box" style="width: 100%;">
@@ -3304,15 +3305,91 @@
           </div>
 
           <!-- Paid Icon Chest Card -->
-          <div style="flex: 1; min-width: 260px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 152, 0, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
-            <h4 style="color: #ff9800; margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Ikon (Płatna)</h4>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Wylosuj ikony ze sklepu lub legendarną ikonę <b>Irysa</b> (1% szans)! Koszt: 30 monet.</p>
+          <div style="flex: 1; min-width: 240px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 152, 0, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+            <h4 style="color: #ff9800; margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Ikon</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Wylosuj klasyczne ikony ze sklepu lub legendę <b>Irysa</b> (1% szans)! Koszt: 30 monet.</p>
             <div class="chest-action-box" style="width: 100%;">
               <button class="mode-btn" id="claim-paid-chest-btn" style="border-color: #ff9800; color: #ff9800; font-size: 1rem; padding: 10px 20px; width: 100%;" onclick="openPaidIconChest()">Otwórz za 30 monet</button>
               <div id="paid-chest-status-text" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
                 Dostępna (30 Coins)
               </div>
             </div>
+          </div>
+
+          <!-- Fame Icon Chest Card -->
+          <div style="flex: 1; min-width: 240px; background: rgba(0,0,0,0.3); border: 1px solid rgba(10, 200, 185, 0.2); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);">
+            <h4 style="color: var(--cyan-primary); margin-bottom: 10px; font-family: var(--font-title); font-size: 1.2rem; text-transform: uppercase;">Skrzynia Sław</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; min-height: 40px; line-height: 1.4;">Wylosuj nowe ikony sław lub legendy <b>Young Maga</b> (1%) i <b>Stary Irys</b> (1%)! Koszt: 80 monet.</p>
+            <div class="chest-action-box" style="width: 100%;">
+              <button class="mode-btn" id="claim-fame-chest-btn" style="border-color: var(--cyan-primary); color: var(--cyan-primary); font-size: 1rem; padding: 10px 20px; width: 100%;" onclick="openFameChest()">Otwórz za 80 monet</button>
+              <div id="fame-chest-status-text" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+                Dostępna (80 Coins)
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Trading View -->
+    <div id="trading-view" class="view">
+      <div class="lobby-header">
+        <h2 style="color: var(--gold-primary); text-shadow: 0 0 15px rgba(200,170,110,0.4);"><i class="fa-solid fa-arrows-rotate"></i> Platforma Wymiany</h2>
+        <p>Wymieniaj się ikonami profilowymi z innymi graczami lub sprzedawaj je za monety!</p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; max-width: 1200px; margin: 0 auto; flex-wrap: wrap;">
+        
+        <!-- Left: Create Offer Form -->
+        <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); backdrop-filter: blur(15px);">
+          <h3 style="font-family: var(--font-title); color: var(--gold-primary); margin-bottom: 20px; text-transform: uppercase; font-size: 1.25rem; border-bottom: 1px solid rgba(200,170,110,0.2); padding-bottom: 10px;">Stwórz Ofertę</h3>
+          
+          <div class="form-group">
+            <label>Wybierz swoją ikonę na wymianę:</label>
+            <select id="trade-offered-icon" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(200,170,110,0.2); padding: 12px; color: var(--text-main); font-family: var(--font-body); border-radius: 6px; outline: none; transition: all 0.3s; font-size: 0.95rem;">
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top: 15px;">
+            <label>Typ żądania:</label>
+            <div style="display: flex; gap: 15px; margin-top: 5px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-size: 0.9rem;">
+                <input type="radio" name="trade-req-type" value="coins" checked onclick="toggleTradeReqType('coins')" style="width: auto;"> Monety
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; text-transform: none; color: var(--text-main); font-size: 0.9rem;">
+                <input type="radio" name="trade-req-type" value="icon" onclick="toggleTradeReqType('icon')" style="width: auto;"> Inna ikona
+              </label>
+            </div>
+          </div>
+
+          <!-- Request Coins input -->
+          <div class="form-group" id="trade-req-coins-container" style="margin-top: 15px;">
+            <label>Cena w monetach:</label>
+            <input type="number" id="trade-req-coins" min="1" max="99999" placeholder="np. 50" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(200,170,110,0.2); padding: 12px; color: var(--text-main); font-family: var(--font-body); border-radius: 6px; outline: none; transition: all 0.3s; font-size: 0.95rem;">
+          </div>
+
+          <!-- Request Icon select -->
+          <div class="form-group" id="trade-req-icon-container" style="margin-top: 15px; display: none;">
+            <label>Wybierz ikonę, której żądasz:</label>
+            <select id="trade-req-icon" style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(200,170,110,0.2); padding: 12px; color: var(--text-main); font-family: var(--font-body); border-radius: 6px; outline: none; transition: all 0.3s; font-size: 0.95rem;">
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+
+          <button class="auth-btn" style="margin-top: 25px;" onclick="createTradeOffer()">Wystaw Ofertę</button>
+        </div>
+
+        <!-- Right: Active Offers Board -->
+        <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; backdrop-filter: blur(15px);">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(200,170,110,0.2); padding-bottom: 10px; margin-bottom: 20px;">
+            <h3 style="font-family: var(--font-title); color: var(--gold-primary); text-transform: uppercase; font-size: 1.25rem;">Aktywne Oferty</h3>
+            <button class="mode-btn" style="font-size: 0.8rem; padding: 5px 12px;" onclick="loadTrades()"><i class="fa-solid fa-arrows-rotate"></i> Odśwież</button>
+          </div>
+
+          <div id="trades-list-container" style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; max-height: 500px; padding-right: 5px;">
+            <!-- Active offers will load here -->
           </div>
         </div>
 
@@ -3442,7 +3519,12 @@
       { name: 'popek', displayName: 'Popek', image: '/assets/images/popek.png', cost: 100 },
       { name: 'milosz_kulesza', displayName: 'Miłosz Kulesza', image: '/assets/images/milosz_kulesza.png', cost: 100 },
       { name: 'mr_krycha', displayName: 'Mr Krycha', image: '/assets/images/mr_krycha.png', cost: 100 },
-      { name: 'irys', displayName: 'Irys', image: '/assets/images/irys.png', cost: 99999, isLegendary: true }
+      { name: 'ishowspeed', displayName: 'iShowSpeed', image: '/assets/images/ishowspeed.png', cost: 100 },
+      { name: 'lewandowski', displayName: 'Lewandowski', image: '/assets/images/lewandowski.png', cost: 100 },
+      { name: 'trzaskowski', displayName: 'Trzaskowski', image: '/assets/images/trzaskowski.png', cost: 100 },
+      { name: 'kaczynski', displayName: 'Kaczyński', image: '/assets/images/kaczynski.png', cost: 100 },
+      { name: 'irys', displayName: 'Stary Irys', image: '/assets/images/irys.png', cost: 99999, isLegendary: true },
+      { name: 'young_maga', displayName: 'Young Maga', image: '/assets/images/young_maga.png', cost: 99999, isLegendary: true }
     ];
 
     let activeShopSubTab = 'champions';
@@ -3847,6 +3929,12 @@
       socket.on('opponent_disconnected', () => {
         showToast('Przeciwnik rozłączył się!');
       });
+
+      socket.on('trades_updated', () => {
+        if (activeTab === 'trading') {
+          loadTrades();
+        }
+      });
     }
 
     function logout() {
@@ -3869,7 +3957,7 @@
       // Mark active header tab button
       const buttons = document.querySelectorAll('.tab-btn');
       buttons.forEach(btn => btn.classList.remove('active'));
-      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')) || (tab === 'blackjack' && btn.innerText.includes('Black Jack')));
+      const clickedBtn = Array.from(buttons).find(btn => btn.innerText.toLowerCase() === tab.toLowerCase() || (tab === 'lobby' && btn.innerText === 'Lobby') || (tab === 'leaderboard' && btn.innerText === 'Ranking') || (tab === 'training' && btn.innerText === 'Trening') || (tab === 'daily-chest' && btn.innerText.includes('Skrzynka')) || (tab === 'pharaoh-event' && btn.innerText.includes('Event Faraon')) || (tab === 'blackjack' && btn.innerText.includes('Black Jack')) || (tab === 'trading' && btn.innerText.includes('Wymiana')));
       if (clickedBtn) clickedBtn.classList.add('active');
 
       if (tab === 'blackjack') {
@@ -3904,6 +3992,9 @@
       } else if (tab === 'blackjack') {
         switchView('blackjack-view');
         resetBlackjackUI();
+      } else if (tab === 'trading') {
+        switchView('trading-view');
+        loadTrades();
       } else if (tab === 'shop') {
         switchView('shop-view');
         renderShop();
@@ -4993,6 +5084,144 @@
         btn.disabled = false;
         btn.classList.remove('disabled');
         statusText.innerText = 'Dostępna (30 Coins)';
+      }
+    }
+
+    async function openFameChest() {
+      if (rouletteSpinning) return;
+      if (!currentUser) return;
+      if (currentUser.coins < 80) {
+        showToast('Niewystarczająca ilość monet! (Potrzebujesz 80 monet)');
+        return;
+      }
+
+      const btn = document.getElementById('claim-fame-chest-btn');
+      const statusText = document.getElementById('fame-chest-status-text');
+      const tape = document.getElementById('roulette-tape');
+      if (!btn || !tape) return;
+
+      rouletteSpinning = true;
+      btn.disabled = true;
+      btn.classList.add('disabled');
+      statusText.innerText = 'Losowanie w toku...';
+
+      try {
+        const response = await fetch('/api/claim-fame-chest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick })
+        });
+        
+        const data = await response.json();
+
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          rouletteSpinning = false;
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          statusText.innerText = 'Dostępna (80 Coins)';
+          return;
+        }
+
+        const winIconName = data.rewardIcon;
+        const isLegendary = data.isLegendary;
+        const isDuplicate = data.isDuplicate;
+
+        tape.style.transition = 'none';
+        tape.style.transform = 'translateX(0px)';
+        tape.innerHTML = '';
+        
+        const cardWidth = 100;
+        const gap = 8;
+        const totalCards = 60;
+        const winIndex = 45;
+
+        const getIconDetails = (name) => {
+          const icon = shopIcons.find(i => i.name === name);
+          return icon ? icon : { displayName: name, image: `/assets/images/${name}.png` };
+        };
+
+        const winDetails = getIconDetails(winIconName);
+        
+        for (let i = 0; i < totalCards; i++) {
+          let cardDetails;
+          if (i === winIndex) {
+            cardDetails = winDetails;
+          } else {
+            const rand = Math.random();
+            if (rand < 0.02) {
+              cardDetails = getIconDetails('young_maga');
+            } else if (rand < 0.04) {
+              cardDetails = getIconDetails('irys');
+            } else {
+              const dummyPool = ['ishowspeed', 'lewandowski', 'trzaskowski', 'kaczynski'];
+              const dummyName = dummyPool[Math.floor(Math.random() * dummyPool.length)];
+              cardDetails = getIconDetails(dummyName);
+            }
+          }
+
+          let bg = 'linear-gradient(135deg, #1b263b, #0d1b2a)'; 
+          let border = '1px solid rgba(255,255,255,0.1)';
+          let tagText = '';
+
+          if (cardDetails.isLegendary) {
+            bg = 'linear-gradient(135deg, #b71c1c, #d32f2f)'; 
+            border = '2px solid #ffd700'; 
+            tagText = '<span style="font-size:0.65rem; color:#ffd700; font-weight:bold; text-transform:uppercase; margin-top:2px;">LEGENDA</span>';
+          } else if (cardDetails.cost > 0) {
+            bg = 'linear-gradient(135deg, #0f4c5c, #0ac8b9)'; 
+          }
+
+          tape.innerHTML += `
+            <div class="roulette-card" style="width: ${cardWidth}px; height: 100px; flex-shrink: 0; border-radius: 4px; background: ${bg}; border: ${border}; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); font-family: var(--font-title); position: relative; padding: 5px;">
+              <img src="${cardDetails.image}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid rgba(255,255,255,0.2);">
+              <span style="font-size: 0.75rem; font-weight: bold; color: #fff; margin-top: 5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${cardDetails.displayName}</span>
+              ${tagText}
+            </div>
+          `;
+        }
+
+        tape.offsetHeight; 
+
+        const viewportWidth = tape.parentElement.clientWidth;
+        const itemOffset = winIndex * (cardWidth + gap) + cardWidth / 2;
+        const randOffset = Math.floor(Math.random() * (cardWidth - 20)) - (cardWidth / 2 - 10);
+        const targetX = - (itemOffset + randOffset - viewportWidth / 2);
+
+        playRouletteTickingEffect();
+        tape.style.transition = 'transform 6s cubic-bezier(0.08, 0.8, 0.12, 1)';
+        tape.style.transform = 'translateX(' + targetX + 'px)';
+
+        setTimeout(() => {
+          rouletteSpinning = false;
+          currentUser.coins = data.newCoins;
+          currentUser.unlocked_icons = data.unlocked_icons;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          
+          btn.disabled = false;
+          btn.classList.remove('disabled');
+          statusText.innerText = 'Dostępna (80 Coins)';
+
+          if (isLegendary) {
+            playLegendarySound();
+            showToast(`🔥 NIESAMOWITE! Wylosowałeś LEGENDARNĄ ikonę: ${winDetails.displayName}!`);
+          } else if (isDuplicate) {
+            playChestOpenSound();
+            showToast(`Otrzymałeś ikonę: ${winDetails.displayName} (Duplikat - zwrot 40 monet!).`);
+          } else {
+            playChestOpenSound();
+            showToast(`Gratulacje! Wylosowałeś ikonę: ${winDetails.displayName}!`);
+          }
+        }, 6100);
+
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+        rouletteSpinning = false;
+        btn.disabled = false;
+        btn.classList.remove('disabled');
+        statusText.innerText = 'Dostępna (80 Coins)';
       }
     }
     // Render skill HUD in the Game View
@@ -6298,6 +6527,232 @@
     function resetKanapa() {
       if (!kanapaState) return;
       startKanapa();
+    }
+
+    function toggleTradeReqType(type) {
+      if (type === 'coins') {
+        document.getElementById('trade-req-coins-container').style.display = 'block';
+        document.getElementById('trade-req-icon-container').style.display = 'none';
+      } else {
+        document.getElementById('trade-req-coins-container').style.display = 'none';
+        document.getElementById('trade-req-icon-container').style.display = 'block';
+      }
+    }
+
+    function populateTradeForms() {
+      const offeredSelect = document.getElementById('trade-offered-icon');
+      const reqSelect = document.getElementById('trade-req-icon');
+      if (!offeredSelect || !reqSelect) return;
+
+      offeredSelect.innerHTML = '';
+      reqSelect.innerHTML = '';
+
+      // Populate Offered dropdown based on unlocked icons
+      if (currentUser && currentUser.unlocked_icons) {
+        const owned = Array.isArray(currentUser.unlocked_icons) 
+          ? currentUser.unlocked_icons 
+          : currentUser.unlocked_icons.split(',');
+
+        owned.forEach(iconName => {
+          // Find displayName
+          const matched = shopIcons.find(i => i.name === iconName);
+          const name = matched ? matched.displayName : iconName;
+          offeredSelect.innerHTML += `<option value="${iconName}">${name}</option>`;
+        });
+      }
+
+      // Populate Requested dropdown based on all icons in shop
+      shopIcons.forEach(icon => {
+        reqSelect.innerHTML += `<option value="${icon.name}">${icon.displayName}</option>`;
+      });
+    }
+
+    async function createTradeOffer() {
+      if (!currentUser) return;
+      const offeredIcon = document.getElementById('trade-offered-icon').value;
+      if (!offeredIcon) {
+        showToast('Nie posiadasz żadnych ikon do wymiany!');
+        return;
+      }
+      const reqType = document.querySelector('input[name="trade-req-type"]:checked').value;
+      
+      let requestedCoins = 0;
+      let requestedIcon = '';
+
+      if (reqType === 'coins') {
+        requestedCoins = parseInt(document.getElementById('trade-req-coins').value) || 0;
+        if (requestedCoins <= 0) {
+          showToast('Podaj poprawną ilość monet!');
+          return;
+        }
+      } else {
+        requestedIcon = document.getElementById('trade-req-icon').value;
+        if (requestedIcon === offeredIcon) {
+          showToast('Nie możesz żądać tej samej ikony!');
+          return;
+        }
+      }
+
+      try {
+        const response = await fetch('/api/trades/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            creator: currentUser.nick,
+            offeredIcon,
+            requestedIcon,
+            requestedCoins
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          return;
+        }
+
+        showToast('Oferta została wystawiona!');
+        // Update user state locally
+        currentUser.unlocked_icons = data.unlocked_icons;
+        currentUser.activeIcon = data.active_icon;
+        localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+        updateUserUIElements();
+        
+        populateTradeForms();
+        loadTrades();
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
+    }
+
+    async function loadTrades() {
+      populateTradeForms();
+      const container = document.getElementById('trades-list-container');
+      if (!container) return;
+      container.innerHTML = '<div style="text-align:center; color:var(--text-muted);">Ładowanie ofert...</div>';
+
+      try {
+        const response = await fetch('/api/trades');
+        const trades = await response.json();
+
+        container.innerHTML = '';
+        if (trades.length === 0) {
+          container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px;">Brak aktywnych ofert. Bądź pierwszym, który wystawi ofertę!</div>';
+          return;
+        }
+
+        const getIconDetails = (name) => {
+          const matched = shopIcons.find(i => i.name === name);
+          return matched ? matched : { displayName: name, image: `/assets/images/${name}.png` };
+        };
+
+        trades.forEach(trade => {
+          const offDetails = getIconDetails(trade.offered_icon);
+          
+          let reqHtml = '';
+          if (trade.requested_coins > 0) {
+            reqHtml = `<span style="color:#ffd700; font-weight:bold; font-size:1.1rem;"><i class="fa-solid fa-coins"></i> ${trade.requested_coins} Monet</span>`;
+          } else {
+            const reqDetails = getIconDetails(trade.requested_icon);
+            reqHtml = `
+              <div style="display:flex; align-items:center; gap:8px;">
+                <img src="${reqDetails.image}" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,0.2);">
+                <span style="font-weight:600; color:#fff;">${reqDetails.displayName}</span>
+              </div>
+            `;
+          }
+
+          const isMine = currentUser && currentUser.nick === trade.creator;
+          let btnHtml = '';
+          if (isMine) {
+            btnHtml = `<button class="logout-btn" style="padding:6px 14px; font-size:0.85rem;" onclick="cancelTradeOffer(${trade.id})">Anuluj</button>`;
+          } else {
+            btnHtml = `<button class="mode-btn" style="font-size:0.85rem; padding:6px 14px;" onclick="acceptTradeOffer(${trade.id})">Akceptuj</button>`;
+          }
+
+          container.innerHTML += `
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(200,170,110,0.15); border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <!-- Creator -->
+                <div style="font-size:0.85rem; color:var(--text-muted); min-width: 80px;">
+                  Gracz:<br><b style="color:var(--gold-primary);">${trade.creator}</b>
+                </div>
+                
+                <!-- Offered Icon -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <img src="${offDetails.image}" style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid var(--gold-primary); box-shadow: 0 0 10px rgba(200,170,110,0.2);">
+                  <div>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Oferuje:</span><br>
+                    <b style="color:#fff; font-size:0.9rem;">${offDetails.displayName}</b>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Arrows -->
+              <i class="fa-solid fa-right-long" style="color:var(--gold-primary); font-size:1.2rem;"></i>
+
+              <!-- Requested -->
+              <div>
+                <span style="font-size:0.75rem; color:var(--text-muted);">Oczekuje:</span><br>
+                ${reqHtml}
+              </div>
+
+              <!-- Action -->
+              <div>
+                ${btnHtml}
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = '<div style="text-align:center; color:var(--red-primary);">Błąd wczytywania ofert.</div>';
+      }
+    }
+
+    async function cancelTradeOffer(tradeId) {
+      if (!currentUser) return;
+      try {
+        const response = await fetch('/api/trades/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, tradeId })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          return;
+        }
+        showToast('Oferta została anulowana.');
+        // Refresh profile
+        fetchUserData();
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
+    }
+
+    async function acceptTradeOffer(tradeId) {
+      if (!currentUser) return;
+      try {
+        const response = await fetch('/api/trades/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buyer: currentUser.nick, tradeId })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast('Błąd: ' + data.error);
+          return;
+        }
+        showToast('Wymiana zrealizowana pomyślnie!');
+        // Refresh profile
+        fetchUserData();
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
     }
   </script>
 </body>
