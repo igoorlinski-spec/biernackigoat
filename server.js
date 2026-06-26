@@ -19,14 +19,24 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// PostgreSQL connection pool
+// PostgreSQL connection pool - Neon requires SSL always
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false }
 });
 
 // Helper: run a query
 const query = (text, params) => pool.query(text, params);
+
+// Test DB connection on startup
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('!!! DATABASE CONNECTION FAILED:', err.message);
+  } else {
+    console.log('Database connected successfully.');
+    release();
+  }
+});
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -157,11 +167,11 @@ app.post('/api/login', async (req, res) => {
       [nickOrEmail, nickOrEmail.toLowerCase()]
     );
     if (result.rows.length === 0)
-      return res.status(400).json({ error: 'Nie znaleziono użytkownika' });
+      return res.status(400).json({ error: 'Nie znaleziono użytkownika. Sprawdź nick/e-mail.' });
 
     const user = result.rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Błędne hasło' });
+    if (!isMatch) return res.status(400).json({ error: 'Błędne hasło.' });
 
     let icons = user.unlocked_icons ? user.unlocked_icons.split(',') : [];
     if (!icons.includes('dalton')) icons.push('dalton');
@@ -174,7 +184,7 @@ app.post('/api/login', async (req, res) => {
       lp: user.lp,
       rank: user.rank,
       stars: user.stars || 0,
-      unlocked_characters: user.unlocked_characters.split(','),
+      unlocked_characters: user.unlocked_characters ? user.unlocked_characters.split(',') : ['Zygzak'],
       unlocked_skills: user.unlocked_skills ? user.unlocked_skills.split(',') : [],
       activeChampion: user.active_champion || 'Zygzak',
       unlocked_icons: icons,
@@ -182,7 +192,8 @@ app.post('/api/login', async (req, res) => {
       lastDailyClaim: parseInt(user.last_daily_claim) || 0
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Błąd serwera: ' + err.message });
   }
 });
 
