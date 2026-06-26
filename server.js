@@ -612,7 +612,7 @@ function evaluateRound(gameId) {
   }
 
   // Check game over
-  const pointsToWin = game.mode === 'ranked' ? 3 : 5;
+  const pointsToWin = (game.mode === 'ranked' || game.mode === 'practice') ? 3 : 5;
   if (game.scores[p1] >= pointsToWin) {
     finishGame(gameId, p1);
   } else if (game.scores[p2] >= pointsToWin) {
