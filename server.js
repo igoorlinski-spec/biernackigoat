@@ -160,12 +160,13 @@ app.post('/api/admin/give', async (req, res) => {
   const { secret, nick, coins, stars } = req.body;
   if (secret !== 'biernacki2024admin') return res.status(403).json({ error: 'Forbidden' });
   try {
-    const result = await query('SELECT coins, stars FROM users WHERE nick = $1', [nick]);
+    const result = await query('SELECT nick, coins, stars FROM users WHERE LOWER(nick) = LOWER($1)', [nick]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const actualNick = result.rows[0].nick;
     const newCoins = (result.rows[0].coins || 0) + (parseInt(coins) || 0);
     const newStars = (result.rows[0].stars || 0) + (parseInt(stars) || 0);
-    await query('UPDATE users SET coins = $1, stars = $2 WHERE nick = $3', [newCoins, newStars, nick]);
-    res.json({ success: true, nick, newCoins, newStars });
+    await query('UPDATE users SET coins = $1, stars = $2 WHERE nick = $3', [newCoins, newStars, actualNick]);
+    res.json({ success: true, nick: actualNick, newCoins, newStars });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
