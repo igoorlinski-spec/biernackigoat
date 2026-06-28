@@ -2691,7 +2691,7 @@
     </div>
 
     <!-- Hot Potato Game View -->
-    <div id="hot-potato-view" class="view" style="display: none; padding: 20px; max-width: 800px; margin: 0 auto;">
+    <div id="hot-potato-view" class="view" style="padding: 20px; max-width: 800px; margin: 0 auto;">
       <div class="leaderboard-card" style="text-align: center; position: relative;">
         <h3 style="color: #ff9800; font-family: var(--font-title); letter-spacing: 2px;">GORĄCY ZIEMNIAK FOOTBALL ⚽🔥</h3>
         
@@ -3359,6 +3359,22 @@
           </div>
           <button class="mode-btn" style="border-color: #f44336; color: #f44336;" onclick="startPractice('hard')">Graj (Trudny)</button>
         </div>
+
+        <!-- Hot Potato Training -->
+        <div class="mode-card practice-hot-potato" style="border-color: #ff9800; box-shadow: 0 0 15px rgba(255, 152, 0, 0.15); background: linear-gradient(135deg, rgba(255,152,0,0.04) 0%, rgba(10,10,20,0.95) 100%);">
+          <div>
+            <div style="text-align: center; margin-bottom: 15px;">
+              <div style="width: 90px; height: 90px; border-radius: 50%; border: 3px solid #ff9800; display: inline-flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); box-shadow: 0 0 15px rgba(255, 152, 0, 0.4); font-size: 2.5rem;">⚽</div>
+            </div>
+            <h3 style="color: #ff9800;">Trening Gorący Ziemniak</h3>
+            <p><strong>Postać:</strong> Boty (Ezreal / Dushane / Soprano)<br><strong>Trudność:</strong> Ćwicz nazwy piłkarzy z botami bez utraty punktów LP. Gra do jednego wybuchu.<br><strong>Nagroda:</strong> Od +20 do +400 monet w zależności od wybranej trudności bota.</p>
+          </div>
+          <div style="display: flex; gap: 6px; justify-content: center; margin-top: 10px;">
+            <button class="mode-btn" style="border-color: #4caf50; color: #4caf50; padding: 6px 12px; font-size: 0.85rem;" onclick="startPractice('easy', 'hot_potato')">Łatwy</button>
+            <button class="mode-btn" style="border-color: #ff9800; color: #ff9800; padding: 6px 12px; font-size: 0.85rem;" onclick="startPractice('medium', 'hot_potato')">Średni</button>
+            <button class="mode-btn" style="border-color: #f44336; color: #f44336; padding: 6px 12px; font-size: 0.85rem;" onclick="startPractice('hard', 'hot_potato')">Trudny</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3965,7 +3981,7 @@
         document.getElementById('queue-screen').style.display = 'none';
         clearInterval(queueInterval);
 
-        if (mode === 'hot_potato') {
+        if (mode === 'hot_potato' || mode === 'practice_hot_potato') {
           switchView('hot-potato-view');
           
           document.getElementById('hp-p1-name').innerText = currentUser.nick + ' (Ty)';
@@ -4385,13 +4401,14 @@
     }
 
     // Practice Mode (Tryb Treningowy)
-    function startPractice(difficulty = 'easy') {
+    function startPractice(difficulty = 'easy', mode = 'default') {
       if (!socket) return;
       socket.emit('start_practice', { 
         nick: currentUser.nick, 
         champion: currentUser.activeChampion,
         difficulty: difficulty,
-        activeIcon: currentUser.activeIcon
+        activeIcon: currentUser.activeIcon,
+        mode: mode
       });
     }
 

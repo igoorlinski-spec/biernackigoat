@@ -1378,7 +1378,7 @@ io.on('connection', (socket) => {
     queues[mode] = queues[mode].filter(n => n !== nick);
   });
 
-  socket.on('start_practice', async ({ nick, champion, difficulty, activeIcon }) => {
+  socket.on('start_practice', async ({ nick, champion, difficulty, activeIcon, mode }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
@@ -1390,8 +1390,9 @@ io.on('connection', (socket) => {
     else if (difficulty === 'hard') { botNick = 'Bot Soprano'; botChamp = 'Tony Soprano'; }
     userChampions[botNick] = botChamp;
 
+    const gameMode = mode === 'hot_potato' ? 'practice_hot_potato' : 'practice';
     const game = {
-      id: gameId, mode: 'practice', difficulty: difficulty || 'easy',
+      id: gameId, mode: gameMode, difficulty: difficulty || 'easy',
       player1: nick, player2: botNick,
       scores: { [nick]: 0, [botNick]: 0 }, round: 1, targetTime: 0,
       roundInputs: {}, skillsUsed: { [nick]: false, [botNick]: false },
@@ -1413,12 +1414,16 @@ io.on('connection', (socket) => {
       opponentChamp: botChamp, 
       opponentIcon: botIcon, 
       yourIcon: userIcons[nick] || 'default', 
-      mode: 'practice', 
+      mode: gameMode, 
       role: 'player1',
       yourStats: stats1,
       opponentStats: stats2
     });
-    startNewRound(gameId);
+    if (mode === 'hot_potato') {
+      startHotPotatoGame(gameId);
+    } else {
+      startNewRound(gameId);
+    }
   });
 
   socket.on('submit_time', ({ gameId, nick, timeDiff }) => {
@@ -1920,7 +1925,7 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
       }
     }
 
-  } else if (game.mode === 'practice') {
+  } else if (game.mode === 'practice' || game.mode === 'practice_hot_potato') {
     const humanPlayer = game.player1;
     const isHumanWinner = winnerNick === humanPlayer;
     let coinsReward = 20;
