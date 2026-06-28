@@ -1591,9 +1591,18 @@ io.on('connection', (socket) => {
     if (skill === 'podgladacz') {
       game.hpSkillsUsed[playerNick] = true;
       socket.emit('hp_skill_result', { skill: 'podgladacz', timeLeft: game.timeLeft });
+      io.to(game.player1).emit('hp_skill_used_notification', { nick: playerNick, skill: 'podgladacz' });
+      if (!game.player2.startsWith('Bot')) {
+        io.to(game.player2).emit('hp_skill_used_notification', { nick: playerNick, skill: 'podgladacz' });
+      }
     } else if (skill === 'wiewszystko') {
       if (game.activePlayer !== playerNick) return;
       game.hpSkillsUsed[playerNick] = true;
+
+      io.to(game.player1).emit('hp_skill_used_notification', { nick: playerNick, skill: 'wiewszystko' });
+      if (!game.player2.startsWith('Bot')) {
+        io.to(game.player2).emit('hp_skill_used_notification', { nick: playerNick, skill: 'wiewszystko' });
+      }
 
       const correctName = game.currentFootballer.names[0];
       game.currentFootballer = selectRandomFootballer();
@@ -1627,6 +1636,11 @@ io.on('connection', (socket) => {
     } else if (skill === 'stalin') {
       if (game.activePlayer !== playerNick) return;
       game.hpSkillsUsed[playerNick] = true;
+
+      io.to(game.player1).emit('hp_skill_used_notification', { nick: playerNick, skill: 'stalin' });
+      if (!game.player2.startsWith('Bot')) {
+        io.to(game.player2).emit('hp_skill_used_notification', { nick: playerNick, skill: 'stalin' });
+      }
 
       game.gulagState[opponent] = {
         active: true,
@@ -1959,6 +1973,7 @@ function triggerBotHotPotatoMove(gameId) {
         question: game.gulagState[human].questions[0].q,
         options: game.gulagState[human].questions[0].options
       });
+      io.to(s1).emit('hp_skill_used_notification', { nick: botPlayer, skill: 'stalin' });
     }
   }
 

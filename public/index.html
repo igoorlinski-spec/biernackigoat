@@ -3260,6 +3260,7 @@
           <button id="shop-btn-champs" class="shop-tab-btn active" onclick="switchShopSubTab('champions')">Bohaterowie</button>
           <button id="shop-btn-skills" class="shop-tab-btn" onclick="switchShopSubTab('skills')">Umiejętności</button>
           <button id="shop-btn-icons" class="shop-tab-btn" onclick="switchShopSubTab('icons')">Ikony</button>
+          <button id="shop-btn-hpchars" class="shop-tab-btn" onclick="switchShopSubTab('hpchars')">Gorący Ziemniak</button>
         </div>
       </div>
       <div class="shop-grid" id="shop-items-container">
@@ -4100,6 +4101,18 @@
         document.getElementById('hp-p1-char-img').src = `/assets/images/${selfChar}.png`;
         document.getElementById('hp-p2-char-img').src = `/assets/images/${oppChar}.png`;
 
+        const displayNames = {
+          kluj: 'Kluj',
+          podgladacz: 'Podglądacz',
+          wiewszystko: 'Wie Wszystko',
+          stalin: 'Stalin'
+        };
+        const selfCharName = displayNames[selfChar] || selfChar;
+        const oppCharName = displayNames[oppChar] || oppChar;
+
+        document.getElementById('hp-p1-name').innerText = currentUser.nick + ` (${selfCharName})`;
+        document.getElementById('hp-p2-name').innerText = currentOpponent + ` (${oppCharName})`;
+
         // Setup Active Skill Button
         const skillContainer = document.getElementById('hp-skill-container');
         const skillBtn = document.getElementById('hp-skill-btn');
@@ -4217,6 +4230,22 @@
 
       socket.on('gulag_incorrect', () => {
         showToast('Zła odpowiedź! Spróbuj ponownie rozwiązać zadanie.');
+      });
+
+      socket.on('hp_skill_used_notification', ({ nick, skill }) => {
+        const names = {
+          podgladacz: 'Podejrzenie Czasu (Podglądacz) 👁️',
+          wiewszystko: 'Autouzupełnienie (Wie Wszystko) 🧠',
+          stalin: 'Zsyłka do Łagru (Stalin) ☭'
+        };
+        const skillName = names[skill] || skill;
+        showToast(`Gracz ${nick} użył umiejętności: ${skillName}!`);
+        
+        const feedback = document.getElementById('hp-feedback');
+        if (feedback) {
+          feedback.innerText = `Gracz ${nick} użył ${skillName}!`;
+          feedback.style.color = '#ff9800';
+        }
       });
 
       socket.on('hot_potato_guess_result', ({ correct }) => {
@@ -5106,9 +5135,11 @@
       const champsBtn = document.getElementById('shop-btn-champs');
       const skillsBtn = document.getElementById('shop-btn-skills');
       const iconsBtn = document.getElementById('shop-btn-icons');
+      const hpcharsBtn = document.getElementById('shop-btn-hpchars');
       if (champsBtn) champsBtn.classList.toggle('active', subTab === 'champions');
       if (skillsBtn) skillsBtn.classList.toggle('active', subTab === 'skills');
       if (iconsBtn) iconsBtn.classList.toggle('active', subTab === 'icons');
+      if (hpcharsBtn) hpcharsBtn.classList.toggle('active', subTab === 'hpchars');
       
       const title = document.getElementById('shop-title-text');
       const desc = document.getElementById('shop-desc-text');
@@ -5121,6 +5152,9 @@
       } else if (subTab === 'icons') {
         if (title) title.innerText = 'Sklep ikon profilu';
         if (desc) desc.innerText = 'Kupuj unikalne ikony profilowe za monety (każda ikona kosztuje 100 monet)!';
+      } else if (subTab === 'hpchars') {
+        if (title) title.innerText = 'Sklep Gorącego Ziemniaka';
+        if (desc) desc.innerText = 'Kupuj unikalne postacie do trybu Gorący Ziemniak, by zyskać potężne zdolności aktywne lub pasywne!';
       }
       
       renderShop();
@@ -5238,6 +5272,95 @@
             </div>
           `;
         });
+      } else if (activeShopSubTab === 'hpchars') {
+        const hpCharactersList = [
+          { name: 'kluj', displayName: 'Kluj', cost: 0, desc: 'Pasywna: Ukrywa przeciwnikowi jedną losową podpowiedź o piłkarzu (numer, narodowość, klub lub liga) i wyświetla ją jako ??? w jego turze.', image: '/assets/images/kluj.png' },
+          { name: 'podgladacz', displayName: 'Podglądacz', cost: 3000, desc: 'Aktywna (Czas): Pokazuje pozostały czas bomby na 4 sekundy. Może być użyta raz w meczu.', image: '/assets/images/podgladacz.png' },
+          { name: 'wiewszystko', displayName: 'Wie Wszystko', cost: 6000, desc: 'Aktywna (Autouzupełnienie): Automatycznie zgaduje piłkarza w Twojej turze i przekazuje bombę. Może być użyta raz w meczu.', image: '/assets/images/wiewszystko.png' },
+          { name: 'stalin', displayName: 'Stalin', cost: 12000, desc: 'Aktywna (Gulag): Wysyła wroga do łagru na karne roboty (blokuje zgadywanie i zmusza do rozwiązania 3 zadań matematycznych). Może być użyta raz w meczu w swojej turze.', image: '/assets/images/stalin.png' }
+        ];
+
+        hpCharactersList.forEach(char => {
+          const isUnlocked = currentUser && currentUser.unlockedHpCharacters && currentUser.unlockedHpCharacters.includes(char.name);
+          const isActive = currentUser && currentUser.activeHpCharacter === char.name;
+
+          let btnHtml = '';
+          if (isActive) {
+            btnHtml = `<button class="buy-btn active-champ">Wybrany</button>`;
+          } else if (isUnlocked) {
+            btnHtml = `<button class="buy-btn unlocked" onclick="selectHpCharacterFromShop('${char.name}')">Wybierz</button>`;
+          } else {
+            const canAfford = currentUser && currentUser.coins >= char.cost;
+            btnHtml = `<button class="buy-btn ${canAfford ? '' : 'disabled'}" onclick="buyHpCharacterFromShop('${char.name}', ${char.cost})">Kup za Monety</button>`;
+          }
+
+          container.innerHTML += `
+            <div class="shop-card">
+              <div>
+                <div class="shop-card-icon" style="border-radius: 50%; overflow: hidden; border-width: 2px;">
+                  <img src="${char.image}" style="object-fit: cover; width: 100%; height: 100%;">
+                </div>
+                <h3>${char.displayName}</h3>
+                <div class="champ-price">
+                  <i class="fa-solid fa-coins"></i> ${char.cost === 0 ? 'Darmowa' : char.cost + ' Monet'}
+                </div>
+                <p class="champ-skill-desc">${char.desc}</p>
+              </div>
+              ${btnHtml}
+            </div>
+          `;
+        });
+      }
+    }
+
+    async function selectHpCharacterFromShop(character) {
+      if (!currentUser) return;
+      try {
+        const response = await fetch('/api/select-hp-character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, character })
+        });
+        if (response.ok) {
+          currentUser.activeHpCharacter = character;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          showToast('Zmieniono postać Gorącego Ziemniaka!');
+          renderShop();
+          updateHpCharacterUI();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function buyHpCharacterFromShop(character, cost) {
+      if (!currentUser) return;
+      if (currentUser.coins < cost) {
+        showToast('Masz za mało monet!');
+        return;
+      }
+      try {
+        const response = await fetch('/api/buy-hp-character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, character, cost })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          currentUser.coins = data.coins;
+          currentUser.unlockedHpCharacters = data.unlockedHpCharacters;
+          currentUser.activeHpCharacter = character;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          showToast('Odblokowano nową postać w sklepie!');
+          renderShop();
+          updateHpCharacterUI();
+        } else {
+          showToast('Błąd: ' + data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
       }
     }
 
@@ -5431,6 +5554,7 @@
         }
       }
       updateHpCharacterUI();
+      renderShop();
     }
 
     async function buyHpCharacter() {
@@ -5460,6 +5584,7 @@
           updateUserUIElements();
           showToast('Odblokowano nową postać!');
           updateHpCharacterUI();
+          renderShop();
         } else {
           showToast('Błąd: ' + data.error);
         }
