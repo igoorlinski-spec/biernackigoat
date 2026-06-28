@@ -1227,7 +1227,60 @@ app.get('/api/casino/xp-bonus/:nick', async (req, res) => {
 
 
 
-const queues = { draft: [], ranked: [] };
+const FOOTBALLERS = [
+  { names: ["erling haaland", "haaland"], number: 9, nationality: "Norwegia", club: "Manchester City", league: "Premier League (Anglia)" },
+  { names: ["mohamed salah", "salah"], number: 11, nationality: "Egipt", club: "Liverpool", league: "Premier League (Anglia)" },
+  { names: ["kevin de bruyne", "de bruyne"], number: 17, nationality: "Belgia", club: "Manchester City", league: "Premier League (Anglia)" },
+  { names: ["bukayo saka", "saka"], number: 7, nationality: "Anglia", club: "Arsenal", league: "Premier League (Anglia)" },
+  { names: ["bruno fernandes", "fernandes"], number: 8, nationality: "Portugalia", club: "Manchester United", league: "Premier League (Anglia)" },
+  { names: ["cole palmer", "palmer"], number: 20, nationality: "Anglia", club: "Chelsea", league: "Premier League (Anglia)" },
+  { names: ["son heung-min", "son", "heung-min son"], number: 7, nationality: "Korea Południowa", club: "Tottenham Hotspur", league: "Premier League (Anglia)" },
+  { names: ["robert lewandowski", "lewandowski"], number: 9, nationality: "Polska", club: "FC Barcelona", league: "La Liga (Hiszpania)" },
+  { names: ["kylian mbappe", "mbappe", "kylian mbappé", "mbappé"], number: 9, nationality: "Francja", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["vinicius junior", "vinicius", "vinícius júnior", "vinicius jr"], number: 7, nationality: "Brazylia", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["jude bellingham", "bellingham"], number: 5, nationality: "Anglia", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["antoine griezmann", "griezmann"], number: 7, nationality: "Francja", club: "Atletico Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["harry kane", "kane"], number: 9, nationality: "Anglia", club: "Bayern Monachium", league: "Bundesliga (Niemcy)" },
+  { names: ["jamal musiala", "musiala"], number: 42, nationality: "Niemcy", club: "Bayern Monachium", league: "Bundesliga (Niemcy)" },
+  { names: ["florian wirtz", "wirtz"], number: 10, nationality: "Niemcy", club: "Bayer Leverkusen", league: "Bundesliga (Niemcy)" },
+  { names: ["lautaro martinez", "martinez", "lautaro martínez", "martínez"], number: 10, nationality: "Argentyna", club: "Inter Mediolan", league: "Serie A (Włochy)" },
+  { names: ["rafael leao", "leao", "rafael leão", "leão"], number: 10, nationality: "Portugalia", club: "AC Milan", league: "Serie A (Włochy)" },
+  { names: ["ousmane dembele", "dembele", "ousmane dembélé", "dembélé"], number: 10, nationality: "Francja", club: "PSG", league: "Ligue 1 (Francja)" },
+  { names: ["warren zaire-emery", "zaire-emery", "zaïre-emery"], number: 33, nationality: "Francja", club: "PSG", league: "Ligue 1 (Francja)" },
+  { names: ["vitinha"], number: 17, nationality: "Portugalia", club: "PSG", league: "Ligue 1 (Francja)" },
+  { names: ["luka modric", "modric", "modrić"], number: 10, nationality: "Chorwacja", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["rodrigo de paul", "de paul"], number: 5, nationality: "Argentyna", club: "Atletico Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["bernardo silva", "silva"], number: 20, nationality: "Portugalia", club: "Manchester City", league: "Premier League (Anglia)" },
+  { names: ["rodri", "rodrigo hernandez"], number: 16, nationality: "Hiszpania", club: "Manchester City", league: "Premier League (Anglia)" },
+  { names: ["phil foden", "foden"], number: 47, nationality: "Anglia", club: "Manchester City", league: "Premier League (Anglia)" },
+  { names: ["martin odegaard", "odegaard", "ødegaard"], number: 8, nationality: "Norwegia", club: "Arsenal", league: "Premier League (Anglia)" },
+  { names: ["declan rice", "rice"], number: 41, nationality: "Anglia", club: "Arsenal", league: "Premier League (Anglia)" },
+  { names: ["virgil van dijk", "van dijk"], number: 4, nationality: "Holandia", club: "Liverpool", league: "Premier League (Anglia)" },
+  { names: ["alexis mac allister", "mac allister"], number: 10, nationality: "Argentyna", club: "Liverpool", league: "Premier League (Anglia)" },
+  { names: ["marcus rashford", "rashford"], number: 10, nationality: "Anglia", club: "Manchester United", league: "Premier League (Anglia)" },
+  { names: ["alejandro garnacho", "garnacho"], number: 17, nationality: "Argentyna", club: "Manchester United", league: "Premier League (Anglia)" },
+  { names: ["enzo fernandez", "enzo"], number: 8, nationality: "Argentyna", club: "Chelsea", league: "Premier League (Anglia)" },
+  { names: ["pedri"], number: 8, nationality: "Hiszpania", club: "FC Barcelona", league: "La Liga (Hiszpania)" },
+  { names: ["gavi"], number: 6, nationality: "Hiszpania", club: "FC Barcelona", league: "La Liga (Hiszpania)" },
+  { names: ["lamine yamal", "yamal"], number: 19, nationality: "Hiszpania", club: "FC Barcelona", league: "La Liga (Hiszpania)" },
+  { names: ["federico valverde", "valverde"], number: 8, nationality: "Urugwaj", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["aurélien tchouaméni", "tchouameni", "tchouaméni"], number: 14, nationality: "Francja", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["antonio rudiger", "rudiger", "rüdiger"], number: 22, nationality: "Niemcy", club: "Real Madrid", league: "La Liga (Hiszpania)" },
+  { names: ["serge gnabry", "gnabry"], number: 7, nationality: "Niemcy", club: "Bayern Monachium", league: "Bundesliga (Niemcy)" },
+  { names: ["leroy sane", "sane", "sané"], number: 10, nationality: "Niemcy", club: "Bayern Monachium", league: "Bundesliga (Niemcy)" },
+  { names: ["hakan calhanoglu", "calhanoglu", "çalhanoğlu"], number: 20, nationality: "Turcja", club: "Inter Mediolan", league: "Serie A (Włochy)" },
+  { names: ["marcus thuram", "thuram"], number: 9, nationality: "Francja", club: "Inter Mediolan", league: "Serie A (Włochy)" },
+  { names: ["dusan vlahovic", "vlahovic", "vlahović"], number: 9, nationality: "Serbia", club: "Juventus", league: "Serie A (Włochy)" },
+  { names: ["ademola lookman", "lookman"], number: 11, nationality: "Nigeria", club: "Atalanta", league: "Serie A (Włochy)" },
+  { names: ["khvicha kvaratskhelia", "kvaratskhelia", "kvara"], number: 77, nationality: "Gruzja", club: "Napoli", league: "Serie A (Włochy)" },
+  { names: ["romelu lukaku", "lukaku"], number: 11, nationality: "Belgia", club: "Napoli", league: "Serie A (Włochy)" },
+  { names: ["paulo dybala", "dybala"], number: 21, nationality: "Argentyna", club: "AS Roma", league: "Serie A (Włochy)" },
+  { names: ["teo hernandez", "theo hernandez", "hernandez"], number: 19, nationality: "Francja", club: "AC Milan", league: "Serie A (Włochy)" },
+  { names: ["christian pulisic", "pulisic"], number: 11, nationality: "USA", club: "AC Milan", league: "Serie A (Włochy)" },
+  { names: ["victor osimhen", "osimhen"], number: 9, nationality: "Nigeria", club: "Galatasaray", league: "Süper Lig (Turcja)" }
+];
+
+const queues = { draft: [], ranked: [], hot_potato: [] };
 const onlineUsers = {};
 const userChampions = {};
 const userIcons = {};
@@ -1264,7 +1317,7 @@ io.on('connection', (socket) => {
 
     const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     let botNick = 'Bot Ezreal', botChamp = 'Zygzak', botDiff = 'easy';
-    if (mode === 'ranked') {
+    if (mode === 'ranked' || mode === 'hot_potato') {
       const rand = Math.random();
       if (rand < 0.33) {
         botNick = 'Bot Ezreal'; botChamp = 'Zygzak'; botDiff = 'easy';
@@ -1313,7 +1366,11 @@ io.on('connection', (socket) => {
         yourStats: stats1,
         opponentStats: stats2
       });
-      startNewRound(gameId);
+      if (mode === 'hot_potato') {
+        startHotPotatoGame(gameId);
+      } else {
+        startNewRound(gameId);
+      }
     }
   });
 
@@ -1417,12 +1474,52 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('submit_hot_potato_guess', ({ gameId, guess }) => {
+    const game = activeGames[gameId];
+    if (!game || game.status !== 'playing') return;
+    if (game.activePlayer !== playerNick) return;
+
+    const normalizedGuess = guess.trim().toLowerCase();
+    const current = game.currentFootballer;
+    const isCorrect = current.names.some(name => name.toLowerCase() === normalizedGuess);
+
+    if (isCorrect) {
+      game.currentFootballer = selectRandomFootballer();
+      game.activePlayer = game.player1 === playerNick ? game.player2 : game.player1;
+
+      const s1 = onlineUsers[game.player1];
+      const s2 = onlineUsers[game.player2];
+
+      if (s1) {
+        io.to(s1).emit('hot_potato_turn_update', {
+          activePlayer: game.activePlayer,
+          lastAnswerCorrect: true,
+          footballer: getFootballerPrompt(game.currentFootballer)
+        });
+      }
+      if (s2 && !game.player2.startsWith('Bot')) {
+        io.to(s2).emit('hot_potato_turn_update', {
+          activePlayer: game.activePlayer,
+          lastAnswerCorrect: true,
+          footballer: getFootballerPrompt(game.currentFootballer)
+        });
+      }
+
+      if (game.activePlayer.startsWith('Bot')) {
+        triggerBotHotPotatoMove(gameId);
+      }
+    } else {
+      socket.emit('hot_potato_guess_result', { correct: false });
+    }
+  });
+
   socket.on('disconnect', () => {
     if (playerNick) {
       delete onlineUsers[playerNick];
       delete userChampions[playerNick];
       queues.draft = queues.draft.filter(n => n !== playerNick);
       queues.ranked = queues.ranked.filter(n => n !== playerNick);
+      queues.hot_potato = queues.hot_potato.filter(n => n !== playerNick);
 
       for (const gameId in activeGames) {
         const game = activeGames[gameId];
@@ -1538,12 +1635,125 @@ async function matchmake(mode) {
         yourStats: stats2,
         opponentStats: stats1
       });
-      startNewRound(gameId);
+      if (mode === 'hot_potato') {
+        startHotPotatoGame(gameId);
+      } else {
+        startNewRound(gameId);
+      }
     } else {
       if (s1) queues[mode].unshift(p1);
       if (s2) queues[mode].unshift(p2);
     }
   }
+}
+
+function startHotPotatoGame(gameId) {
+  const game = activeGames[gameId];
+  if (!game) return;
+
+  game.activePlayer = Math.random() < 0.5 ? game.player1 : game.player2;
+  game.totalTime = Math.floor(Math.random() * 81) + 10; // 10s to 90s
+  game.timeLeft = game.totalTime;
+  game.status = 'playing';
+  game.currentFootballer = selectRandomFootballer();
+
+  const s1 = onlineUsers[game.player1];
+  const s2 = onlineUsers[game.player2];
+
+  if (s1) {
+    io.to(s1).emit('hot_potato_start', {
+      gameId,
+      totalTime: game.totalTime,
+      activePlayer: game.activePlayer,
+      footballer: getFootballerPrompt(game.currentFootballer)
+    });
+  }
+  if (s2 && !game.player2.startsWith('Bot')) {
+    io.to(s2).emit('hot_potato_start', {
+      gameId,
+      totalTime: game.totalTime,
+      activePlayer: game.activePlayer,
+      footballer: getFootballerPrompt(game.currentFootballer)
+    });
+  }
+
+  // Ticker timer
+  game.timer = setInterval(() => {
+    const g = activeGames[gameId];
+    if (!g || g.status !== 'playing') {
+      clearInterval(game.timer);
+      return;
+    }
+
+    g.timeLeft--;
+
+    io.to(g.player1).emit('hot_potato_tick', { elapsed: g.totalTime - g.timeLeft });
+    if (!g.player2.startsWith('Bot')) {
+      io.to(g.player2).emit('hot_potato_tick', { elapsed: g.totalTime - g.timeLeft });
+    }
+
+    if (g.timeLeft <= 0) {
+      clearInterval(g.timer);
+      g.status = 'ended';
+      finishGame(gameId, g.activePlayer === g.player1 ? g.player2 : g.player1);
+    }
+  }, 1000);
+
+  if (game.activePlayer.startsWith('Bot')) {
+    triggerBotHotPotatoMove(gameId);
+  }
+}
+
+function selectRandomFootballer() {
+  const index = Math.floor(Math.random() * FOOTBALLERS.length);
+  return FOOTBALLERS[index];
+}
+
+function getFootballerPrompt(footballer) {
+  return {
+    number: footballer.number,
+    nationality: footballer.nationality,
+    club: footballer.club,
+    league: footballer.league
+  };
+}
+
+function triggerBotHotPotatoMove(gameId) {
+  const game = activeGames[gameId];
+  if (!game || game.status !== 'playing') return;
+
+  let minDelay = 2000, maxDelay = 4000;
+  if (game.difficulty === 'easy') { minDelay = 6000; maxDelay = 9000; }
+  else if (game.difficulty === 'medium') { minDelay = 4000; maxDelay = 6000; }
+
+  const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+
+  setTimeout(() => {
+    const g = activeGames[gameId];
+    if (!g || g.status !== 'playing' || !g.activePlayer.startsWith('Bot')) return;
+    if (g.timeLeft <= 0) return;
+
+    // Check chance of correct answer (easy = 80%, medium = 90%, hard = 96%)
+    const rand = Math.random();
+    const successRate = g.difficulty === 'easy' ? 0.8 : (g.difficulty === 'medium' ? 0.9 : 0.96);
+
+    if (rand <= successRate) {
+      g.currentFootballer = selectRandomFootballer();
+      g.activePlayer = g.player1;
+
+      const s1 = onlineUsers[g.player1];
+      if (s1) {
+        io.to(s1).emit('hot_potato_turn_update', {
+          activePlayer: g.activePlayer,
+          lastAnswerCorrect: true,
+          footballer: getFootballerPrompt(g.currentFootballer)
+        });
+      }
+    } else {
+      // Trigger a retry or delayed retry for the bot
+      triggerBotHotPotatoMove(gameId);
+    }
+  }, delay);
 }
 
 function startNewRound(gameId) {
@@ -1672,7 +1882,7 @@ async function finishGame(gameId, winnerNick, isDisconnect = false) {
     await rewardPlayer(winnerNick, 100, 0, { winner: winnerNick, reward: '+100 Coins' });
     if (!loserNick.startsWith('Bot')) await rewardPlayer(loserNick, 0, 0, { winner: winnerNick, reward: '+0 Coins' });
 
-  } else if (game.mode === 'ranked') {
+  } else if (game.mode === 'ranked' || game.mode === 'hot_potato') {
     const lpGain = Math.floor(Math.random() * 11) + 20;
     const lpLoss = -(Math.floor(Math.random() * 6) + 15);
 

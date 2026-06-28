@@ -2678,6 +2678,74 @@
           </div>
           <button class="mode-btn" style="background: linear-gradient(135deg, #bf360c, #e64a19); border-color: #ff7043; box-shadow: 0 4px 15px rgba(255,112,67,0.3);" onclick="openKanapaSetup()">Graj Kanapę</button>
         </div>
+        <!-- Hot Potato Football Mode -->
+        <div class="mode-card hot_potato" style="border-color: #ff9800; background: linear-gradient(135deg, rgba(255,152,0,0.08) 0%, rgba(10,10,20,0.95) 100%);">
+          <div>
+            <i class="fa-solid fa-fire" style="color: #ff9800;"></i>
+            <h3 style="color: #ff9800;">Gorący Ziemniak</h3>
+            <p>Piłkarski pojedynek turowy. Odpowiedz na podstawie numeru i narodowości, by przekazać bombę. Czas od 10s do 1.5 min jest ukryty. Kto ma bombę pod koniec czasu - przegrywa i traci LP!</p>
+          </div>
+          <button class="mode-btn" style="background: linear-gradient(135deg, #e65100, #f57c00); border-color: #ff9800; box-shadow: 0 4px 15px rgba(255,152,0,0.3);" onclick="joinQueue('hot_potato')">Graj Ziemniaka</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hot Potato Game View -->
+    <div id="hot-potato-view" class="view" style="display: none; padding: 20px; max-width: 800px; margin: 0 auto;">
+      <div class="leaderboard-card" style="text-align: center; position: relative;">
+        <h3 style="color: #ff9800; font-family: var(--font-title); letter-spacing: 2px;">GORĄCY ZIEMNIAK FOOTBALL ⚽🔥</h3>
+        
+        <!-- Timer Notification / Banner -->
+        <div id="hp-banner" style="background: rgba(255, 152, 0, 0.15); border: 1px solid #ff9800; padding: 10px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; color: #ff9800;">
+          Gra rozpoczęta! Czas trwania: <span id="hp-initial-time">?</span> sekund (zniknie za chwilę...)
+        </div>
+
+        <!-- Players and Bomb Status -->
+        <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 30px; gap: 15px; flex-wrap: wrap;">
+          <!-- Player 1 -->
+          <div id="hp-p1-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s;">
+            <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p1-name">Ty</div>
+            <div id="hp-p1-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa;">Oczekiwanie</div>
+          </div>
+
+          <!-- Bomb/Potato Indicator -->
+          <div style="text-align: center; width: 15%; min-width: 70px;">
+            <div id="hp-bomb" style="font-size: 3.5rem; transition: transform 0.2s; display: inline-block;">💣</div>
+            <div id="hp-bomb-text" style="font-size: 0.8rem; text-transform: uppercase; color: #ff5252; margin-top: 5px; font-weight: bold; letter-spacing: 1px;">Cyk cyk...</div>
+          </div>
+
+          <!-- Player 2 -->
+          <div id="hp-p2-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s;">
+            <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p2-name">Przeciwnik</div>
+            <div id="hp-p2-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa;">Oczekiwanie</div>
+          </div>
+        </div>
+
+        <!-- Footballer Prompt Box -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,215,0,0.15); border-radius: 12px; padding: 25px; margin-bottom: 25px; position: relative;">
+          <h4 style="color: var(--gold-primary); font-family: var(--font-title); margin-bottom: 15px; letter-spacing: 1px;">KTO TO JEST?</h4>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; max-width: 500px; margin: 0 auto;">
+            <div style="font-size: 1rem; color: #a09c90;">Numer na koszulce: <span id="hp-prompt-number" style="color: #fff; font-weight: bold; font-size: 1.2rem; font-family: var(--font-mono);">?</span></div>
+            <div style="font-size: 1rem; color: #a09c90;">Narodowość: <span id="hp-prompt-nationality" style="color: #fff; font-weight: bold;">?</span></div>
+            <div style="font-size: 1rem; color: #a09c90;">Klub: <span id="hp-prompt-club" style="color: #fff; font-weight: bold;">?</span></div>
+            <div style="font-size: 1rem; color: #a09c90;">Liga: <span id="hp-prompt-league" style="color: #fff; font-weight: bold;">?</span></div>
+          </div>
+        </div>
+
+        <!-- Guess Input Box (only visible when it's your turn) -->
+        <div id="hp-input-container" style="display: none; max-width: 500px; margin: 0 auto 20px auto;">
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="hp-guess-input" placeholder="Wpisz nazwisko piłkarza..." style="flex: 1; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid var(--gold-primary); border-radius: 6px; color: #fff; font-size: 1.1rem; text-align: center;" onkeydown="if(event.key==='Enter') submitHotPotatoGuess()">
+            <button onclick="submitHotPotatoGuess()" style="padding: 12px 24px; background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark)); border: 1px solid var(--gold-primary); border-radius: 6px; color: #010a13; font-weight: bold; cursor: pointer; font-family: var(--font-title); letter-spacing: 1px;">Zatwierdź</button>
+          </div>
+          <div id="hp-feedback" style="margin-top: 10px; font-weight: bold; min-height: 20px;"></div>
+        </div>
+
+        <!-- Status Message for turn waiting -->
+        <div id="hp-waiting-msg" style="display: block; color: var(--text-muted); font-size: 1.1rem; margin-bottom: 20px; font-style: italic;">
+          Oczekiwanie na ruch przeciwnika...
+        </div>
       </div>
     </div>
 
@@ -3897,14 +3965,27 @@
         document.getElementById('queue-screen').style.display = 'none';
         clearInterval(queueInterval);
 
-        // Switch to Game View
-        switchView('game-view');
+        if (mode === 'hot_potato') {
+          switchView('hot-potato-view');
+          
+          document.getElementById('hp-p1-name').innerText = currentUser.nick + ' (Ty)';
+          document.getElementById('hp-p2-name').innerText = opponent;
+          
+          document.getElementById('hp-guess-input').value = '';
+          document.getElementById('hp-feedback').innerText = '';
+          document.getElementById('hp-feedback').style.color = 'inherit';
+          document.getElementById('hp-bomb').style.transform = 'scale(1)';
+          document.getElementById('hp-bomb').innerText = '💣';
+          document.getElementById('hp-banner').style.display = 'block';
+        } else {
+          switchView('game-view');
 
-        // Setup board names and avatars
-        document.getElementById('p1-name').innerText = currentUser.nick + ' (Ty)';
-        document.getElementById('p1-champ').innerText = `Postać: ${currentUser.activeChampion}`;
-        document.getElementById('p2-name').innerText = opponent;
-        document.getElementById('p2-champ').innerText = `Postać: ${opponentChamp || 'Zygzak'}`;
+          // Setup board names and avatars
+          document.getElementById('p1-name').innerText = currentUser.nick + ' (Ty)';
+          document.getElementById('p1-champ').innerText = `Postać: ${currentUser.activeChampion}`;
+          document.getElementById('p2-name').innerText = opponent;
+          document.getElementById('p2-champ').innerText = `Postać: ${opponentChamp || 'Zygzak'}`;
+        }
 
         // Setup player extra stats (Rank, Winratio, Badges)
         const formatExtraStats = (stats) => {
@@ -3926,6 +4007,54 @@
         document.getElementById('p2-score').innerText = '0';
 
         renderSkillHUD();
+      });
+
+      socket.on('hot_potato_start', ({ gameId, totalTime, activePlayer, footballer }) => {
+        currentGameId = gameId;
+        
+        document.getElementById('hp-initial-time').innerText = totalTime;
+        document.getElementById('hp-banner').style.display = 'block';
+
+        setTimeout(() => {
+          const banner = document.getElementById('hp-banner');
+          if (banner) banner.style.display = 'none';
+        }, 5000);
+
+        updateHotPotatoTurn(activePlayer, footballer);
+      });
+
+      socket.on('hot_potato_tick', ({ elapsed }) => {
+        const bomb = document.getElementById('hp-bomb');
+        if (bomb) {
+          const scale = 1 + (elapsed * 0.012);
+          bomb.style.transform = `scale(${Math.min(1.8, scale)})`;
+          
+          if (elapsed > 40) {
+            bomb.innerText = '🌶️';
+            document.getElementById('hp-bomb-text').innerText = 'GORĄCO!';
+            document.getElementById('hp-bomb-text').style.color = '#ff1744';
+          } else if (elapsed > 20) {
+            bomb.innerText = '🥔';
+            document.getElementById('hp-bomb-text').innerText = 'Cyk cyk...';
+            document.getElementById('hp-bomb-text').style.color = '#ff9100';
+          } else {
+            bomb.innerText = '💣';
+            document.getElementById('hp-bomb-text').innerText = 'Cyk cyk...';
+            document.getElementById('hp-bomb-text').style.color = '#ff5252';
+          }
+        }
+      });
+
+      socket.on('hot_potato_turn_update', ({ activePlayer, lastAnswerCorrect, footballer }) => {
+        updateHotPotatoTurn(activePlayer, footballer);
+      });
+
+      socket.on('hot_potato_guess_result', ({ correct }) => {
+        const feedback = document.getElementById('hp-feedback');
+        if (feedback) {
+          feedback.innerText = 'Zła odpowiedź! Spróbuj ponownie.';
+          feedback.style.color = '#ff5252';
+        }
       });
 
       socket.on('new_round', ({ round, targetTime: target, scores }) => {
@@ -4073,6 +4202,60 @@
         fetchUserData();
         showToast('Jedna z Twoich ofert wymiany została zaakceptowana!');
       });
+    }
+
+    function updateHotPotatoTurn(activePlayer, footballer) {
+      const isMyTurn = activePlayer === currentUser.nick;
+      const p1Box = document.getElementById('hp-p1-box');
+      const p2Box = document.getElementById('hp-p2-box');
+
+      if (isMyTurn) {
+        p1Box.style.background = 'rgba(255, 152, 0, 0.15)';
+        p1Box.style.borderColor = '#ff9800';
+        document.getElementById('hp-p1-status').innerText = 'TWOJA KOLEJ!';
+        document.getElementById('hp-p1-status').style.color = '#ff9800';
+
+        p2Box.style.background = 'rgba(255,255,255,0.02)';
+        p2Box.style.borderColor = '#333';
+        document.getElementById('hp-p2-status').innerText = 'Czeka...';
+        document.getElementById('hp-p2-status').style.color = '#aaa';
+
+        document.getElementById('hp-input-container').style.display = 'block';
+        document.getElementById('hp-waiting-msg').style.display = 'none';
+        
+        setTimeout(() => {
+          document.getElementById('hp-guess-input').focus();
+        }, 50);
+      } else {
+        p2Box.style.background = 'rgba(255, 152, 0, 0.15)';
+        p2Box.style.borderColor = '#ff9800';
+        document.getElementById('hp-p2-status').innerText = 'RUCH PRZECIWNIKA';
+        document.getElementById('hp-p2-status').style.color = '#ff9800';
+
+        p1Box.style.background = 'rgba(255,255,255,0.02)';
+        p1Box.style.borderColor = '#333';
+        document.getElementById('hp-p1-status').innerText = 'Czekasz...';
+        document.getElementById('hp-p1-status').style.color = '#aaa';
+
+        document.getElementById('hp-input-container').style.display = 'none';
+        document.getElementById('hp-waiting-msg').style.display = 'block';
+      }
+
+      document.getElementById('hp-prompt-number').innerText = footballer.number;
+      document.getElementById('hp-prompt-nationality').innerText = footballer.nationality;
+      document.getElementById('hp-prompt-club').innerText = footballer.club;
+      document.getElementById('hp-prompt-league').innerText = footballer.league;
+
+      document.getElementById('hp-guess-input').value = '';
+      document.getElementById('hp-feedback').innerText = '';
+    }
+
+    function submitHotPotatoGuess() {
+      const input = document.getElementById('hp-guess-input');
+      const guess = input.value.trim();
+      if (!guess) return;
+
+      socket.emit('submit_hot_potato_guess', { gameId: currentGameId, guess });
     }
 
     function logout() {
