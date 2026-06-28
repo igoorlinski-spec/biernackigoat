@@ -4992,11 +4992,16 @@
       const activeView = document.querySelector('.view.active');
       const isHP = activeView && activeView.id === 'hot-potato-view';
 
-      // Avoid firing when typing in input forms unless it's HP guess input and Ctrl/Alt is pressed
+      // Avoid firing when typing in input forms unless it's HP guess input, it's empty, and the skill is not used yet
       if (document.activeElement.tagName === 'INPUT') {
-        if (!isHP || document.activeElement.id !== 'hp-guess-input' || (!e.ctrlKey && !e.altKey)) {
-          return;
+        if (isHP && document.activeElement.id === 'hp-guess-input') {
+          if (e.key.toLowerCase() === 'm' && !hpSkillUsedThisGame && document.activeElement.value.trim() === '') {
+            e.preventDefault();
+            useHpActiveSkill();
+            return;
+          }
         }
+        return;
       }
 
       if (e.code === 'Space') {
