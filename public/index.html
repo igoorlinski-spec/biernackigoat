@@ -2717,11 +2717,18 @@
         <!-- Players and Bomb Status -->
         <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 30px; gap: 15px; flex-wrap: wrap;">
           <!-- Player 1 -->
-          <div id="hp-p1-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px;">
-            <img id="hp-p1-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
-            <div style="text-align: left; flex: 1; min-width: 0;">
-              <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p1-name">Ty</div>
-              <div id="hp-p1-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+          <div id="hp-p1-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <img id="hp-p1-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
+              <div style="text-align: left; flex: 1; min-width: 0;">
+                <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p1-name">Ty</div>
+                <div id="hp-p1-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+              </div>
+            </div>
+            <!-- Glowing skill badge -->
+            <div id="hp-p1-skill-indicator" style="display: none; align-items: center; justify-content: center; position: relative; cursor: pointer; width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--gold-primary); box-shadow: 0 0 10px var(--gold-primary); flex-shrink: 0;" onclick="useHpActiveSkill()" title="Wciśnij TAB, aby użyć">
+              <img id="hp-p1-skill-icon" src="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+              <span style="position: absolute; bottom: -5px; right: -5px; background: var(--gold-primary); color: #000; font-size: 0.55rem; font-weight: bold; border-radius: 2px; padding: 0px 2px; border: 1px solid #000;">TAB</span>
             </div>
           </div>
 
@@ -2732,11 +2739,17 @@
           </div>
 
           <!-- Player 2 -->
-          <div id="hp-p2-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px;">
-            <img id="hp-p2-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
-            <div style="text-align: left; flex: 1; min-width: 0;">
-              <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p2-name">Przeciwnik</div>
-              <div id="hp-p2-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+          <div id="hp-p2-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <img id="hp-p2-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
+              <div style="text-align: left; flex: 1; min-width: 0;">
+                <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p2-name">Przeciwnik</div>
+                <div id="hp-p2-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+              </div>
+            </div>
+            <!-- Opponent skill badge -->
+            <div id="hp-p2-skill-indicator" style="display: none; align-items: center; justify-content: center; position: relative; width: 35px; height: 35px; border-radius: 50%; border: 2px solid #555; flex-shrink: 0;" title="Zdolność przeciwnika">
+              <img id="hp-p2-skill-icon" src="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
             </div>
           </div>
         </div>
@@ -4113,21 +4126,32 @@
         document.getElementById('hp-p1-name').innerText = currentUser.nick + ` (${selfCharName})`;
         document.getElementById('hp-p2-name').innerText = currentOpponent + ` (${oppCharName})`;
 
-        // Setup Active Skill Button
+        // Setup Active Skill Indicators
         const skillContainer = document.getElementById('hp-skill-container');
-        const skillBtn = document.getElementById('hp-skill-btn');
-        if (selfChar === 'kluj') {
-          skillContainer.style.display = 'none';
-        } else {
-          skillContainer.style.display = 'block';
-          skillBtn.disabled = false;
-          skillBtn.style.opacity = '1';
-          if (selfChar === 'podgladacz') {
-            skillBtn.innerText = 'Podejrzyj Czas 👁️';
-          } else if (selfChar === 'wiewszystko') {
-            skillBtn.innerText = 'Autouzupełnienie 🧠';
-          } else if (selfChar === 'stalin') {
-            skillBtn.innerText = 'Wyślij do ŁAGRU (GULAG) ☭';
+        if (skillContainer) skillContainer.style.display = 'none';
+
+        const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+        const p1Icon = document.getElementById('hp-p1-skill-icon');
+        if (p1Indicator && p1Icon) {
+          if (selfChar === 'kluj') {
+            p1Indicator.style.display = 'none';
+          } else {
+            p1Indicator.style.display = 'flex';
+            p1Icon.src = `/assets/images/${selfChar}.png`;
+            p1Indicator.style.opacity = '1';
+            p1Indicator.style.pointerEvents = 'auto';
+          }
+        }
+
+        const p2Indicator = document.getElementById('hp-p2-skill-indicator');
+        const p2Icon = document.getElementById('hp-p2-skill-icon');
+        if (p2Indicator && p2Icon) {
+          if (oppChar === 'kluj') {
+            p2Indicator.style.display = 'none';
+          } else {
+            p2Indicator.style.display = 'flex';
+            p2Icon.src = `/assets/images/${oppChar}.png`;
+            p2Indicator.style.opacity = '1';
           }
         }
 
@@ -4162,12 +4186,11 @@
           showToast(`${autoSolvedBy === currentUser.nick ? 'Użyłeś' : autoSolvedBy} Wie Wszystko! Poprawna odpowiedź to: ${correctAnswer} 🧠`);
           if (autoSolvedBy === currentUser.nick) {
             hpSkillUsedThisGame = true;
-            const skillBtn = document.getElementById('hp-skill-btn');
-            if (skillBtn) {
-              skillBtn.disabled = true;
-              skillBtn.style.opacity = '0.4';
-              skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
-            }
+            const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+            if (p1Indicator) p1Indicator.style.display = 'none';
+          } else {
+            const p2Indicator = document.getElementById('hp-p2-skill-indicator');
+            if (p2Indicator) p2Indicator.style.display = 'none';
           }
         }
         updateHotPotatoTurn(activePlayer, footballer);
@@ -4175,12 +4198,9 @@
 
       socket.on('hp_skill_result', ({ skill, timeLeft }) => {
         hpSkillUsedThisGame = true;
-        const skillBtn = document.getElementById('hp-skill-btn');
-        if (skillBtn) {
-          skillBtn.disabled = true;
-          skillBtn.style.opacity = '0.4';
-          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
-        }
+        const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+        if (p1Indicator) p1Indicator.style.display = 'none';
+
         if (skill === 'podgladacz') {
           showToast(`Pozostały czas bomby: ${timeLeft}s! 💣⏰`, 4000);
         }
@@ -4201,12 +4221,8 @@
       socket.on('stalin_gulag_sent', () => {
         showToast('Wysłałeś przeciwnika do łagru na karne roboty! ☭');
         hpSkillUsedThisGame = true;
-        const skillBtn = document.getElementById('hp-skill-btn');
-        if (skillBtn) {
-          skillBtn.disabled = true;
-          skillBtn.style.opacity = '0.4';
-          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
-        }
+        const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+        if (p1Indicator) p1Indicator.style.display = 'none';
       });
 
       socket.on('stalin_gulag_bot_escaped', () => {
@@ -4235,6 +4251,27 @@
       socket.on('hp_skill_used_notification', ({ nick, skill }) => {
         const names = {
           podgladacz: 'Podejrzenie Czasu (Podglądacz) 👁️',
+          wiewszystko: 'Autouzupełnienie (Wie Wszystko) 🧠',
+          stalin: 'Zsyłka do Łagru (Stalin) ☭'
+        };
+        const skillName = names[skill] || skill;
+        showToast(`Gracz ${nick} użył umiejętności: ${skillName}!`);
+        
+        const feedback = document.getElementById('hp-feedback');
+        if (feedback) {
+          feedback.innerText = `Gracz ${nick} użył ${skillName}!`;
+          feedback.style.color = '#ff9800';
+        }
+
+        // Hide appropriate badge
+        if (nick === currentUser.nick) {
+          const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+          if (p1Indicator) p1Indicator.style.display = 'none';
+        } else {
+          const p2Indicator = document.getElementById('hp-p2-skill-indicator');
+          if (p2Indicator) p2Indicator.style.display = 'none';
+        }
+      });,
           wiewszystko: 'Autouzupełnienie (Wie Wszystko) 🧠',
           stalin: 'Zsyłka do Łagru (Stalin) ☭'
         };
@@ -4461,21 +4498,20 @@
         document.getElementById('hp-waiting-msg').style.display = 'block';
       }
 
-      // Update skill button enable/disable state
+      // Update skill badge state
       const selfChar = currentUser.activeHpCharacter || 'kluj';
-      const skillBtn = document.getElementById('hp-skill-btn');
-      if (skillBtn && selfChar !== 'kluj') {
+      const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+      if (p1Indicator && selfChar !== 'kluj') {
         if (hpSkillUsedThisGame) {
-          skillBtn.disabled = true;
-          skillBtn.style.opacity = '0.4';
-          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+          p1Indicator.style.display = 'none';
         } else {
+          p1Indicator.style.display = 'flex';
           if (selfChar === 'podgladacz' || isMyTurn) {
-            skillBtn.disabled = false;
-            skillBtn.style.opacity = '1';
+            p1Indicator.style.opacity = '1';
+            p1Indicator.style.pointerEvents = 'auto';
           } else {
-            skillBtn.disabled = true;
-            skillBtn.style.opacity = '0.5';
+            p1Indicator.style.opacity = '0.4';
+            p1Indicator.style.pointerEvents = 'none';
           }
         }
       }
@@ -4508,11 +4544,9 @@
       }
 
       hpSkillUsedThisGame = true;
-      const skillBtn = document.getElementById('hp-skill-btn');
-      if (skillBtn) {
-        skillBtn.disabled = true;
-        skillBtn.style.opacity = '0.4';
-        skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+      const p1Indicator = document.getElementById('hp-p1-skill-indicator');
+      if (p1Indicator) {
+        p1Indicator.style.display = 'none';
       }
 
       socket.emit('use_hp_skill', { gameId: currentGameId, skill: character });
@@ -4987,21 +5021,26 @@
       }
     }
 
-    // Listen to Spacebar for stopwatch & 'M' for skills & 'N' for extra skills
     window.addEventListener('keydown', (e) => {
       const activeView = document.querySelector('.view.active');
       const isHP = activeView && activeView.id === 'hot-potato-view';
 
-      // Avoid firing when typing in input forms unless it's HP guess input, it's empty, and the skill is not used yet
+      // Intercept Tab key in guess input to trigger skill instead of shifting focus
       if (document.activeElement.tagName === 'INPUT') {
-        if (isHP && document.activeElement.id === 'hp-guess-input') {
-          if (e.key.toLowerCase() === 'm' && !hpSkillUsedThisGame && document.activeElement.value.trim() === '') {
-            e.preventDefault();
-            useHpActiveSkill();
-            return;
-          }
+        if (isHP && document.activeElement.id === 'hp-guess-input' && e.key === 'Tab') {
+          e.preventDefault();
+          useHpActiveSkill();
+          return;
         }
         return;
+      }
+
+      if (e.key === 'Tab') {
+        if (isHP) {
+          e.preventDefault();
+          useHpActiveSkill();
+          return;
+        }
       }
 
       if (e.code === 'Space') {
@@ -5016,11 +5055,7 @@
 
       if (e.key.toLowerCase() === 'm') {
         e.preventDefault();
-        if (isHP) {
-          useHpActiveSkill();
-        } else {
-          useActiveSkill();
-        }
+        useActiveSkill();
       }
 
       if (e.key.toLowerCase() === 'n') {
