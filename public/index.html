@@ -2684,8 +2684,22 @@
             <i class="fa-solid fa-fire" style="color: #ff9800;"></i>
             <h3 style="color: #ff9800;">Gorący Ziemniak</h3>
             <p>Piłkarski pojedynek turowy. Odpowiedz na podstawie numeru i narodowości, by przekazać bombę. Czas od 10s do 1.5 min jest ukryty. Kto ma bombę pod koniec czasu - przegrywa i traci LP!</p>
+            
+            <!-- Character Selector -->
+            <div style="margin: 15px 0 10px 0; text-align: left; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; border: 1px solid rgba(255,152,0,0.2);">
+              <label style="font-size: 0.85rem; color: #ff9800; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 6px;">Wybierz postać:</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="hp-char-select" onchange="onHpCharacterSelected()" style="flex: 1; padding: 8px; background: #070f19; border: 1px solid var(--gold-primary); color: #fff; border-radius: 4px; font-size: 0.88rem;">
+                  <option value="kluj">Kluj (Darmowy - ukrywa podpowiedź wrogowi)</option>
+                  <option value="podgladacz">Podglądacz (3000 monet - czas raz/mecz)</option>
+                  <option value="wiewszystko">Wie Wszystko (6000 monet - autouzupełnienie raz/mecz)</option>
+                  <option value="stalin">Stalin (12000 monet - karne roboty raz/mecz)</option>
+                </select>
+                <button id="hp-buy-char-btn" onclick="buyHpCharacter()" style="display: none; padding: 8px 12px; background: #ffd700; color: #010a13; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;">Odblokuj</button>
+              </div>
+            </div>
           </div>
-          <button class="mode-btn" style="background: linear-gradient(135deg, #e65100, #f57c00); border-color: #ff9800; box-shadow: 0 4px 15px rgba(255,152,0,0.3);" onclick="joinQueue('hot_potato')">Graj Ziemniaka</button>
+          <button id="hp-play-btn" class="mode-btn" style="background: linear-gradient(135deg, #e65100, #f57c00); border-color: #ff9800; box-shadow: 0 4px 15px rgba(255,152,0,0.3);" onclick="joinQueue('hot_potato')">Graj Ziemniaka</button>
         </div>
       </div>
     </div>
@@ -2703,9 +2717,12 @@
         <!-- Players and Bomb Status -->
         <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 30px; gap: 15px; flex-wrap: wrap;">
           <!-- Player 1 -->
-          <div id="hp-p1-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s;">
-            <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p1-name">Ty</div>
-            <div id="hp-p1-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa;">Oczekiwanie</div>
+          <div id="hp-p1-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px;">
+            <img id="hp-p1-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
+            <div style="text-align: left; flex: 1; min-width: 0;">
+              <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p1-name">Ty</div>
+              <div id="hp-p1-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+            </div>
           </div>
 
           <!-- Bomb/Potato Indicator -->
@@ -2715,9 +2732,12 @@
           </div>
 
           <!-- Player 2 -->
-          <div id="hp-p2-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s;">
-            <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p2-name">Przeciwnik</div>
-            <div id="hp-p2-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa;">Oczekiwanie</div>
+          <div id="hp-p2-box" style="padding: 15px; border-radius: 10px; border: 1px solid #333; width: 40%; min-width: 140px; background: rgba(255,255,255,0.02); transition: all 0.3s; display: flex; align-items: center; gap: 10px;">
+            <img id="hp-p2-char-img" src="/assets/images/kluj.png" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--gold-primary); object-fit: cover;">
+            <div style="text-align: left; flex: 1; min-width: 0;">
+              <div style="font-weight: bold; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="hp-p2-name">Przeciwnik</div>
+              <div id="hp-p2-status" style="margin-top: 5px; font-size: 0.9rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Oczekiwanie</div>
+            </div>
           </div>
         </div>
 
@@ -2742,9 +2762,35 @@
           <div id="hp-feedback" style="margin-top: 10px; font-weight: bold; min-height: 20px;"></div>
         </div>
 
+        <!-- Active HP Character Skill Container -->
+        <div id="hp-skill-container" style="display: none; max-width: 500px; margin: 15px auto;">
+          <button id="hp-skill-btn" onclick="useHpActiveSkill()" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.6); border: 2px solid #ff9800; border-radius: 6px; color: #ff9800; font-weight: bold; cursor: pointer; font-family: var(--font-title); letter-spacing: 1px; transition: all 0.3s; font-size: 0.95rem;">
+            Zdolność specjalna: Ładowanie...
+          </button>
+        </div>
+
         <!-- Status Message for turn waiting -->
         <div id="hp-waiting-msg" style="display: block; color: var(--text-muted); font-size: 1.1rem; margin-bottom: 20px; font-style: italic;">
           Oczekiwanie na ruch przeciwnika...
+        </div>
+
+        <!-- Stalin Gulag Overlay -->
+        <div id="hp-gulag-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(1, 10, 19, 0.97); border-radius: 8px; z-index: 100; flex-direction: column; justify-content: center; align-items: center; padding: 30px;">
+          <h2 style="color: #ff3333; text-shadow: 0 0 15px #ff3333; font-family: var(--font-title); margin-bottom: 20px;">☭ SKAZANY NA KARNE ROBOTY (GULAG) ☭</h2>
+          <p style="color: #ccc; margin-bottom: 25px; text-align: center; max-width: 500px; font-size: 0.95rem;">
+            Stalin wysłał Cię na karne roboty! Rozwiąż poprawnie <b>3 zadania maturalne z matematyki</b>, aby powrócić do gry. Twój czas wciąż leci!
+          </p>
+          
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,50,50,0.3); border-radius: 8px; padding: 20px; width: 100%; max-width: 500px; margin-bottom: 20px; text-align: center;">
+            <div id="hp-gulag-question" style="font-size: 1.15rem; font-weight: bold; color: #fff; margin-bottom: 20px; line-height: 1.4;">Zadanie 1...</div>
+            <div id="hp-gulag-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <!-- options dynamic -->
+            </div>
+          </div>
+          
+          <div id="hp-gulag-progress" style="font-size: 0.9rem; color: #aaa; font-weight: bold;">
+            Rozwiązano zadań: <span id="hp-gulag-solved">0</span> / 3
+          </div>
         </div>
       </div>
     </div>
@@ -4025,8 +4071,9 @@
         renderSkillHUD();
       });
 
-      socket.on('hot_potato_start', ({ gameId, totalTime, activePlayer, footballer }) => {
+      socket.on('hot_potato_start', ({ gameId, totalTime, activePlayer, footballer, character, opponentCharacter }) => {
         currentGameId = gameId;
+        hpSkillUsedThisGame = false;
         
         document.getElementById('hp-initial-time').innerText = totalTime;
         document.getElementById('hp-banner').style.display = 'block';
@@ -4035,6 +4082,33 @@
           const banner = document.getElementById('hp-banner');
           if (banner) banner.style.display = 'none';
         }, 5000);
+
+        // Hide Gulag overlay
+        document.getElementById('hp-gulag-overlay').style.display = 'none';
+
+        // Setup character portraits
+        const selfChar = character || 'kluj';
+        const oppChar = opponentCharacter || 'kluj';
+        document.getElementById('hp-p1-char-img').src = `/assets/images/${selfChar}.png`;
+        document.getElementById('hp-p2-char-img').src = `/assets/images/${oppChar}.png`;
+
+        // Setup Active Skill Button
+        const skillContainer = document.getElementById('hp-skill-container');
+        const skillBtn = document.getElementById('hp-skill-btn');
+        if (selfChar === 'kluj') {
+          skillContainer.style.display = 'none';
+        } else {
+          skillContainer.style.display = 'block';
+          skillBtn.disabled = false;
+          skillBtn.style.opacity = '1';
+          if (selfChar === 'podgladacz') {
+            skillBtn.innerText = 'Podejrzyj Czas 👁️';
+          } else if (selfChar === 'wiewszystko') {
+            skillBtn.innerText = 'Autouzupełnienie 🧠';
+          } else if (selfChar === 'stalin') {
+            skillBtn.innerText = 'Wyślij do ŁAGRU (GULAG) ☭';
+          }
+        }
 
         updateHotPotatoTurn(activePlayer, footballer);
       });
@@ -4061,8 +4135,79 @@
         }
       });
 
-      socket.on('hot_potato_turn_update', ({ activePlayer, lastAnswerCorrect, footballer }) => {
+      socket.on('hot_potato_turn_update', ({ activePlayer, lastAnswerCorrect, footballer, autoSolvedBy, correctAnswer }) => {
+        if (autoSolvedBy) {
+          showToast(`${autoSolvedBy === currentUser.nick ? 'Użyłeś' : autoSolvedBy} Wie Wszystko! Poprawna odpowiedź to: ${correctAnswer} 🧠`);
+          if (autoSolvedBy === currentUser.nick) {
+            hpSkillUsedThisGame = true;
+            const skillBtn = document.getElementById('hp-skill-btn');
+            if (skillBtn) {
+              skillBtn.disabled = true;
+              skillBtn.style.opacity = '0.4';
+              skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+            }
+          }
+        }
         updateHotPotatoTurn(activePlayer, footballer);
+      });
+
+      socket.on('hp_skill_result', ({ skill, timeLeft }) => {
+        hpSkillUsedThisGame = true;
+        const skillBtn = document.getElementById('hp-skill-btn');
+        if (skillBtn) {
+          skillBtn.disabled = true;
+          skillBtn.style.opacity = '0.4';
+          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+        }
+        if (skill === 'podgladacz') {
+          showToast(`Pozostały czas bomby: ${timeLeft}s! 💣⏰`, 4000);
+        }
+      });
+
+      socket.on('stalin_gulag_triggered', ({ question, options }) => {
+        const overlay = document.getElementById('hp-gulag-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('hp-gulag-question').innerText = question;
+        document.getElementById('hp-gulag-solved').innerText = '0';
+
+        const optsDiv = document.getElementById('hp-gulag-options');
+        optsDiv.innerHTML = options.map(opt => `
+          <button onclick="submitGulagAnswer('${opt}')" style="padding: 10px; background: #222; border: 1px solid #ff3333; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: var(--font-body);">${opt}</button>
+        `).join('');
+      });
+
+      socket.on('stalin_gulag_sent', () => {
+        showToast('Wysłałeś przeciwnika do łagru na karne roboty! ☭');
+        hpSkillUsedThisGame = true;
+        const skillBtn = document.getElementById('hp-skill-btn');
+        if (skillBtn) {
+          skillBtn.disabled = true;
+          skillBtn.style.opacity = '0.4';
+          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+        }
+      });
+
+      socket.on('stalin_gulag_bot_escaped', () => {
+        showToast('Bot Soprano rozwiązał zadania maturalne i uciekł z łagru! 🏃‍♂️💨');
+      });
+
+      socket.on('gulag_next', ({ question, options, solvedCount }) => {
+        document.getElementById('hp-gulag-question').innerText = question;
+        document.getElementById('hp-gulag-solved').innerText = solvedCount;
+
+        const optsDiv = document.getElementById('hp-gulag-options');
+        optsDiv.innerHTML = options.map(opt => `
+          <button onclick="submitGulagAnswer('${opt}')" style="padding: 10px; background: #222; border: 1px solid #ff3333; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; font-family: var(--font-body);">${opt}</button>
+        `).join('');
+      });
+
+      socket.on('gulag_end', () => {
+        document.getElementById('hp-gulag-overlay').style.display = 'none';
+        showToast('Ukończyłeś karne roboty i powróciłeś z łagru! 🎉');
+      });
+
+      socket.on('gulag_incorrect', () => {
+        showToast('Zła odpowiedź! Spróbuj ponownie rozwiązać zadanie.');
       });
 
       socket.on('hot_potato_guess_result', ({ correct }) => {
@@ -4220,8 +4365,13 @@
       });
     }
 
+    let hpIsMyTurn = false;
+    let hpSkillUsedThisGame = false;
+
     function updateHotPotatoTurn(activePlayer, footballer) {
       const isMyTurn = activePlayer === currentUser.nick;
+      hpIsMyTurn = isMyTurn;
+      
       const p1Box = document.getElementById('hp-p1-box');
       const p2Box = document.getElementById('hp-p2-box');
 
@@ -4257,6 +4407,25 @@
         document.getElementById('hp-waiting-msg').style.display = 'block';
       }
 
+      // Update skill button enable/disable state
+      const selfChar = currentUser.activeHpCharacter || 'kluj';
+      const skillBtn = document.getElementById('hp-skill-btn');
+      if (skillBtn && selfChar !== 'kluj') {
+        if (hpSkillUsedThisGame) {
+          skillBtn.disabled = true;
+          skillBtn.style.opacity = '0.4';
+          skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+        } else {
+          if (selfChar === 'podgladacz' || isMyTurn) {
+            skillBtn.disabled = false;
+            skillBtn.style.opacity = '1';
+          } else {
+            skillBtn.disabled = true;
+            skillBtn.style.opacity = '0.5';
+          }
+        }
+      }
+
       document.getElementById('hp-prompt-number').innerText = footballer.number;
       document.getElementById('hp-prompt-nationality').innerText = footballer.nationality;
       document.getElementById('hp-prompt-club').innerText = footballer.club;
@@ -4272,6 +4441,24 @@
       if (!guess) return;
 
       socket.emit('submit_hot_potato_guess', { gameId: currentGameId, guess });
+    }
+
+    function useHpActiveSkill() {
+      if (!socket || hpSkillUsedThisGame) return;
+      const character = currentUser.activeHpCharacter || 'kluj';
+      if (character === 'kluj') return;
+
+      if ((character === 'wiewszystko' || character === 'stalin') && !hpIsMyTurn) {
+        showToast('Możesz użyć tego skilla tylko podczas swojej tury!');
+        return;
+      }
+
+      socket.emit('use_hp_skill', { gameId: currentGameId, skill: character });
+    }
+
+    function submitGulagAnswer(answer) {
+      if (!socket) return;
+      socket.emit('submit_gulag_answer', { gameId: currentGameId, answer });
     }
 
     function logout() {
@@ -4360,10 +4547,22 @@
       document.getElementById('queue-spinner').style.display = 'block';
       document.getElementById('queue-bot-choices').style.display = 'none';
       document.getElementById('queue-clock').innerText = '00:00';
-      document.getElementById('queue-title-text').innerText = mode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
+      if (mode === 'ranked') {
+        document.getElementById('queue-title-text').innerText = 'Szukanie meczu rankingowego...';
+      } else if (mode === 'hot_potato') {
+        document.getElementById('queue-title-text').innerText = 'Szukanie pojedynku Gorący Ziemniak...';
+      } else {
+        document.getElementById('queue-title-text').innerText = 'Szukanie meczu Draft...';
+      }
       document.getElementById('queue-screen').style.display = 'flex';
 
-      socket.emit('join_queue', { mode, nick: currentUser.nick, champion: currentUser.activeChampion, activeIcon: currentUser.activeIcon });
+      socket.emit('join_queue', { 
+        mode, 
+        nick: currentUser.nick, 
+        champion: currentUser.activeChampion, 
+        activeIcon: currentUser.activeIcon,
+        activeHpCharacter: currentUser.activeHpCharacter || 'kluj'
+      });
 
       queueInterval = setInterval(() => {
         queueSeconds++;
@@ -4390,14 +4589,26 @@
     function acceptBotMatch() {
       document.getElementById('queue-screen').style.display = 'none';
       clearInterval(queueInterval);
-      socket.emit('force_bot_match', { mode: queueMode, nick: currentUser.nick, champion: currentUser.activeChampion, activeIcon: currentUser.activeIcon });
+      socket.emit('force_bot_match', { 
+        mode: queueMode, 
+        nick: currentUser.nick, 
+        champion: currentUser.activeChampion, 
+        activeIcon: currentUser.activeIcon,
+        activeHpCharacter: currentUser.activeHpCharacter || 'kluj'
+      });
     }
 
     function continueSearching() {
       botChoicePrompted = true; // prevent prompting again in the current queue session
       document.getElementById('queue-spinner').style.display = 'block';
       document.getElementById('queue-bot-choices').style.display = 'none';
-      document.getElementById('queue-title-text').innerText = queueMode === 'ranked' ? 'Szukanie meczu rankingowego...' : 'Szukanie meczu Draft...';
+      if (queueMode === 'ranked') {
+        document.getElementById('queue-title-text').innerText = 'Szukanie meczu rankingowego...';
+      } else if (queueMode === 'hot_potato') {
+        document.getElementById('queue-title-text').innerText = 'Szukanie pojedynku Gorący Ziemniak...';
+      } else {
+        document.getElementById('queue-title-text').innerText = 'Szukanie meczu Draft...';
+      }
     }
 
     // Practice Mode (Tryb Treningowy)
@@ -4408,7 +4619,8 @@
         champion: currentUser.activeChampion,
         difficulty: difficulty,
         activeIcon: currentUser.activeIcon,
-        mode: mode
+        mode: mode,
+        activeHpCharacter: currentUser.activeHpCharacter || 'kluj'
       });
     }
 
@@ -5128,6 +5340,105 @@
       }
     }
 
+    const HP_CHAR_PRICES = {
+      kluj: 0,
+      podgladacz: 3000,
+      wiewszystko: 6000,
+      stalin: 12000
+    };
+
+    function updateHpCharacterUI() {
+      const selectEl = document.getElementById('hp-char-select');
+      const buyBtn = document.getElementById('hp-buy-char-btn');
+      const playBtn = document.getElementById('hp-play-btn');
+      if (!selectEl || !currentUser) return;
+
+      const activeChar = currentUser.activeHpCharacter || 'kluj';
+      selectEl.value = activeChar;
+
+      const currentSelected = selectEl.value;
+      const unlocked = currentUser.unlockedHpCharacters || ['kluj'];
+
+      if (unlocked.includes(currentSelected)) {
+        if (buyBtn) buyBtn.style.display = 'none';
+        if (playBtn) {
+          playBtn.disabled = false;
+          playBtn.style.opacity = '1';
+        }
+      } else {
+        if (buyBtn) {
+          buyBtn.style.display = 'block';
+          buyBtn.innerText = `Kup (${HP_CHAR_PRICES[currentSelected]} 💰)`;
+        }
+        if (playBtn) {
+          playBtn.disabled = true;
+          playBtn.style.opacity = '0.5';
+        }
+      }
+    }
+
+    async function onHpCharacterSelected() {
+      const selectEl = document.getElementById('hp-char-select');
+      if (!selectEl || !currentUser) return;
+
+      const character = selectEl.value;
+      const unlocked = currentUser.unlockedHpCharacters || ['kluj'];
+
+      if (unlocked.includes(character)) {
+        try {
+          const response = await fetch('/api/select-hp-character', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nick: currentUser.nick, character })
+          });
+          if (response.ok) {
+            currentUser.activeHpCharacter = character;
+            localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+            showToast('Zmieniono postać Gorącego Ziemniaka!');
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      updateHpCharacterUI();
+    }
+
+    async function buyHpCharacter() {
+      const selectEl = document.getElementById('hp-char-select');
+      if (!selectEl || !currentUser) return;
+
+      const character = selectEl.value;
+      const cost = HP_CHAR_PRICES[character];
+
+      if (currentUser.coins < cost) {
+        showToast('Masz za mało monet!');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/buy-hp-character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nick: currentUser.nick, character, cost })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          currentUser.coins = data.coins;
+          currentUser.unlockedHpCharacters = data.unlockedHpCharacters;
+          currentUser.activeHpCharacter = character;
+          localStorage.setItem('hextech_user', JSON.stringify(currentUser));
+          updateUserUIElements();
+          showToast('Odblokowano nową postać!');
+          updateHpCharacterUI();
+        } else {
+          showToast('Błąd: ' + data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Błąd połączenia.');
+      }
+    }
+
     // Daily Chest (Codzienna skrzynka) CS:GO Case Opening
     let rouletteSpinning = false;
     let dailyChestTimerInterval = null;
@@ -5796,8 +6107,11 @@
           currentUser.casino_xp = data.casino_xp || 0;
           currentUser.blackjack_wins = data.blackjack_wins || 0;
           currentUser.perfect_timings = data.perfect_timings || 0;
+          currentUser.unlockedHpCharacters = data.unlockedHpCharacters || ['kluj'];
+          currentUser.activeHpCharacter = data.activeHpCharacter || 'kluj';
           localStorage.setItem('hextech_user', JSON.stringify(currentUser));
           updateUserUIElements();
+          updateHpCharacterUI();
 
           // Set large profile avatar
           const avatarContainer = document.getElementById('prof-avatar-container');

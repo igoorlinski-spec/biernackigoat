@@ -106,7 +106,9 @@ async function initializeDatabase() {
         last_daily_claim BIGINT DEFAULT 0,
         casino_xp INTEGER DEFAULT 0,
         blackjack_wins INTEGER DEFAULT 0,
-        perfect_timings INTEGER DEFAULT 0
+        perfect_timings INTEGER DEFAULT 0,
+        unlocked_hp_characters TEXT DEFAULT 'kluj',
+        active_hp_character TEXT DEFAULT 'kluj'
       )
     `);
 
@@ -122,6 +124,12 @@ async function initializeDatabase() {
     } catch(e) {}
     try {
       await query(`ALTER TABLE users ADD COLUMN pending_chest_icon TEXT`);
+    } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN unlocked_hp_characters TEXT DEFAULT 'kluj'`);
+    } catch(e) {}
+    try {
+      await query(`ALTER TABLE users ADD COLUMN active_hp_character TEXT DEFAULT 'kluj'`);
     } catch(e) {}
     try {
       await query(`ALTER TABLE users ADD COLUMN pending_chest_refund INTEGER DEFAULT 0`);
@@ -315,7 +323,7 @@ app.get('/api/profile/:nick', async (req, res) => {
   const { nick } = req.params;
   try {
     const result = await query(
-      'SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon, last_daily_claim, casino_xp, blackjack_wins, perfect_timings FROM users WHERE nick = $1',
+      'SELECT nick, coins, lp, rank, stars, unlocked_characters, unlocked_skills, active_champion, unlocked_icons, active_icon, last_daily_claim, casino_xp, blackjack_wins, perfect_timings, unlocked_hp_characters, active_hp_character FROM users WHERE nick = $1',
       [nick]
     );
     if (result.rows.length === 0)
@@ -361,7 +369,9 @@ app.get('/api/profile/:nick', async (req, res) => {
       history: historyResult.rows,
       casino_xp: casinoXp,
       blackjack_wins: bjWins,
-      perfect_timings: perfectTimings
+      perfect_timings: perfectTimings,
+      unlockedHpCharacters: user.unlocked_hp_characters ? user.unlocked_hp_characters.split(',') : ['kluj'],
+      activeHpCharacter: user.active_hp_character || 'kluj'
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -425,6 +435,45 @@ app.post('/api/select-icon', async (req, res) => {
 
     await query('UPDATE users SET active_icon = $1 WHERE nick = $2', [iconName, nick]);
     res.json({ success: true, activeIcon: iconName });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/buy-hp-character', async (req, res) => {
+  const { nick, character, cost } = req.body;
+  if (!nick || !character || !cost) return res.status(400).json({ error: 'Missing parameters' });
+  try {
+    const result = await query('SELECT coins, unlocked_hp_characters FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+
+    let unlocked = user.unlocked_hp_characters ? user.unlocked_hp_characters.split(',') : ['kluj'];
+    if (unlocked.includes(character)) return res.status(400).json({ error: 'Character already unlocked' });
+    if (user.coins < cost) return res.status(400).json({ error: 'Not enough coins' });
+
+    unlocked.push(character);
+    const newCoins = user.coins - cost;
+    await query('UPDATE users SET coins = $1, unlocked_hp_characters = $2 WHERE nick = $3', [newCoins, unlocked.join(','), nick]);
+    res.json({ coins: newCoins, unlockedHpCharacters: unlocked });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/select-hp-character', async (req, res) => {
+  const { nick, character } = req.body;
+  if (!nick || !character) return res.status(400).json({ error: 'Nick and character are required' });
+  try {
+    const result = await query('SELECT unlocked_hp_characters FROM users WHERE nick = $1', [nick]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const user = result.rows[0];
+
+    let unlocked = user.unlocked_hp_characters ? user.unlocked_hp_characters.split(',') : ['kluj'];
+    if (!unlocked.includes(character)) return res.status(400).json({ error: 'Character not unlocked' });
+
+    await query('UPDATE users SET active_hp_character = $1 WHERE nick = $2', [character, nick]);
+    res.json({ success: true, activeHpCharacter: character });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1284,6 +1333,7 @@ const queues = { draft: [], ranked: [], hot_potato: [] };
 const onlineUsers = {};
 const userChampions = {};
 const userIcons = {};
+const userHpCharacters = {};
 const activeGames = {};
 
 io.on('connection', (socket) => {
@@ -1297,20 +1347,22 @@ io.on('connection', (socket) => {
     console.log(`Player ${nick} connected via WebSocket.`);
   });
 
-  socket.on('join_queue', ({ mode, nick, champion, activeIcon }) => {
+  socket.on('join_queue', ({ mode, nick, champion, activeIcon, activeHpCharacter }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
     userIcons[nick] = activeIcon || 'default';
+    userHpCharacters[nick] = activeHpCharacter || 'kluj';
     if (!queues[mode].includes(nick)) queues[mode].push(nick);
     matchmake(mode);
   });
 
-  socket.on('force_bot_match', async ({ mode, nick, champion, activeIcon }) => {
+  socket.on('force_bot_match', async ({ mode, nick, champion, activeIcon, activeHpCharacter }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
     userIcons[nick] = activeIcon || 'default';
+    userHpCharacters[nick] = activeHpCharacter || 'kluj';
 
     // Remove from queue
     queues[mode] = queues[mode].filter(n => n !== nick);
@@ -1336,6 +1388,9 @@ io.on('connection', (socket) => {
       }
     }
     userChampions[botNick] = botChamp;
+    if (botNick === 'Bot Soprano') userHpCharacters[botNick] = 'stalin';
+    else if (botNick === 'Bot Dushane') userHpCharacters[botNick] = 'podgladacz';
+    else userHpCharacters[botNick] = 'kluj';
 
     const game = {
       id: gameId, mode, player1: nick, player2: botNick, difficulty: botDiff,
@@ -1378,17 +1433,22 @@ io.on('connection', (socket) => {
     queues[mode] = queues[mode].filter(n => n !== nick);
   });
 
-  socket.on('start_practice', async ({ nick, champion, difficulty, activeIcon, mode }) => {
+  socket.on('start_practice', async ({ nick, champion, difficulty, activeIcon, mode, activeHpCharacter }) => {
     playerNick = nick;
     onlineUsers[nick] = socket.id;
     userChampions[nick] = champion || 'Zygzak';
     userIcons[nick] = activeIcon || 'default';
+    userHpCharacters[nick] = activeHpCharacter || 'kluj';
 
     const gameId = `practice_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     let botNick = 'Bot Ezreal', botChamp = 'Zygzak';
     if (difficulty === 'medium') { botNick = 'Bot Dushane'; botChamp = 'Dushane'; }
     else if (difficulty === 'hard') { botNick = 'Bot Soprano'; botChamp = 'Tony Soprano'; }
     userChampions[botNick] = botChamp;
+    
+    if (botNick === 'Bot Soprano') userHpCharacters[botNick] = 'stalin';
+    else if (botNick === 'Bot Dushane') userHpCharacters[botNick] = 'podgladacz';
+    else userHpCharacters[botNick] = 'kluj';
 
     const gameMode = mode === 'hot_potato' ? 'practice_hot_potato' : 'practice';
     const game = {
@@ -1484,6 +1544,9 @@ io.on('connection', (socket) => {
     if (!game || game.status !== 'playing') return;
     if (game.activePlayer !== playerNick) return;
 
+    // Check if player is currently in Gulag
+    if (game.gulagState[playerNick] && game.gulagState[playerNick].active) return;
+
     const normalizedGuess = guess.trim().toLowerCase();
     const current = game.currentFootballer;
     const isCorrect = current.names.some(name => name.toLowerCase() === normalizedGuess);
@@ -1499,14 +1562,14 @@ io.on('connection', (socket) => {
         io.to(s1).emit('hot_potato_turn_update', {
           activePlayer: game.activePlayer,
           lastAnswerCorrect: true,
-          footballer: getFootballerPrompt(game.currentFootballer)
+          footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player1)
         });
       }
       if (s2 && !game.player2.startsWith('Bot')) {
         io.to(s2).emit('hot_potato_turn_update', {
           activePlayer: game.activePlayer,
           lastAnswerCorrect: true,
-          footballer: getFootballerPrompt(game.currentFootballer)
+          footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player2)
         });
       }
 
@@ -1515,6 +1578,99 @@ io.on('connection', (socket) => {
       }
     } else {
       socket.emit('hot_potato_guess_result', { correct: false });
+    }
+  });
+
+  socket.on('use_hp_skill', ({ gameId, skill }) => {
+    const game = activeGames[gameId];
+    if (!game || game.status !== 'playing') return;
+    if (game.hpSkillsUsed[playerNick]) return;
+
+    const opponent = game.player1 === playerNick ? game.player2 : game.player1;
+
+    if (skill === 'podgladacz') {
+      game.hpSkillsUsed[playerNick] = true;
+      socket.emit('hp_skill_result', { skill: 'podgladacz', timeLeft: game.timeLeft });
+    } else if (skill === 'wiewszystko') {
+      if (game.activePlayer !== playerNick) return;
+      game.hpSkillsUsed[playerNick] = true;
+
+      const correctName = game.currentFootballer.names[0];
+      game.currentFootballer = selectRandomFootballer();
+      game.activePlayer = opponent;
+
+      const s1 = onlineUsers[game.player1];
+      const s2 = onlineUsers[game.player2];
+
+      if (s1) {
+        io.to(s1).emit('hot_potato_turn_update', {
+          activePlayer: game.activePlayer,
+          lastAnswerCorrect: true,
+          footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player1),
+          autoSolvedBy: playerNick,
+          correctAnswer: correctName
+        });
+      }
+      if (s2 && !game.player2.startsWith('Bot')) {
+        io.to(s2).emit('hot_potato_turn_update', {
+          activePlayer: game.activePlayer,
+          lastAnswerCorrect: true,
+          footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player2),
+          autoSolvedBy: playerNick,
+          correctAnswer: correctName
+        });
+      }
+
+      if (game.activePlayer.startsWith('Bot')) {
+        triggerBotHotPotatoMove(gameId);
+      }
+    } else if (skill === 'stalin') {
+      if (game.activePlayer !== playerNick) return;
+      game.hpSkillsUsed[playerNick] = true;
+
+      game.gulagState[opponent] = {
+        active: true,
+        solved: 0,
+        questions: getRandomGulagQuestions()
+      };
+
+      const sOpp = onlineUsers[opponent];
+      if (sOpp && !opponent.startsWith('Bot')) {
+        io.to(sOpp).emit('stalin_gulag_triggered', {
+          question: game.gulagState[opponent].questions[0].q,
+          options: game.gulagState[opponent].questions[0].options
+        });
+      }
+
+      socket.emit('stalin_gulag_sent');
+
+      if (opponent.startsWith('Bot')) {
+        triggerBotHotPotatoMove(gameId);
+      }
+    }
+  });
+
+  socket.on('submit_gulag_answer', ({ gameId, answer }) => {
+    const game = activeGames[gameId];
+    if (!game || game.status !== 'playing') return;
+    const state = game.gulagState[playerNick];
+    if (!state || !state.active) return;
+
+    const currentQ = state.questions[state.solved];
+    if (answer === currentQ.a) {
+      state.solved++;
+      if (state.solved < 3) {
+        socket.emit('gulag_next', {
+          question: state.questions[state.solved].q,
+          options: state.questions[state.solved].options,
+          solvedCount: state.solved
+        });
+      } else {
+        state.active = false;
+        socket.emit('gulag_end');
+      }
+    } else {
+      socket.emit('gulag_incorrect');
     }
   });
 
@@ -1652,6 +1808,21 @@ async function matchmake(mode) {
   }
 }
 
+const GULAG_QUESTIONS = [
+  { q: "2x + 5 = 15. Jaka jest wartość x?", a: "5", options: ["3", "5", "8", "10"] },
+  { q: "Jeżeli f(x) = 3x - 4, to f(2) wynosi:", a: "2", options: ["2", "4", "6", "8"] },
+  { q: "Rozwiąż równanie: x^2 - 9 = 0", a: "x = 3 lub x = -3", options: ["x = 3", "x = -3", "x = 3 lub x = -3", "Brak rozwiązań"] },
+  { q: "Ile wynosi pole trójkąta o podstawie 6 i wysokości 4?", a: "12", options: ["10", "12", "24", "48"] },
+  { q: "Jaka jest wartość sin(30 stopni)?", a: "1/2", options: ["1/2", "3/2", "0", "1"] },
+  { q: "Rozwiąż: log_2(8) = ?", a: "3", options: ["2", "3", "4", "8"] },
+  { q: "Cena wzrosła ze 100 zł o 20%, a potem spadła o 20%. Nowa cena to:", a: "96 zł", options: ["96 zł", "100 zł", "104 zł", "120 zł"] }
+];
+
+function getRandomGulagQuestions() {
+  const shuffled = [...GULAG_QUESTIONS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 3);
+}
+
 function startHotPotatoGame(gameId) {
   const game = activeGames[gameId];
   if (!game) return;
@@ -1662,6 +1833,19 @@ function startHotPotatoGame(gameId) {
   game.status = 'playing';
   game.currentFootballer = selectRandomFootballer();
 
+  game.hpCharacters = {
+    [game.player1]: userHpCharacters[game.player1] || 'kluj',
+    [game.player2]: userHpCharacters[game.player2] || 'kluj'
+  };
+  game.hpSkillsUsed = {
+    [game.player1]: false,
+    [game.player2]: false
+  };
+  game.gulagState = {
+    [game.player1]: { active: false, solved: 0, questions: [] },
+    [game.player2]: { active: false, solved: 0, questions: [] }
+  };
+
   const s1 = onlineUsers[game.player1];
   const s2 = onlineUsers[game.player2];
 
@@ -1670,7 +1854,9 @@ function startHotPotatoGame(gameId) {
       gameId,
       totalTime: game.totalTime,
       activePlayer: game.activePlayer,
-      footballer: getFootballerPrompt(game.currentFootballer)
+      footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player1),
+      character: game.hpCharacters[game.player1],
+      opponentCharacter: game.hpCharacters[game.player2]
     });
   }
   if (s2 && !game.player2.startsWith('Bot')) {
@@ -1678,7 +1864,9 @@ function startHotPotatoGame(gameId) {
       gameId,
       totalTime: game.totalTime,
       activePlayer: game.activePlayer,
-      footballer: getFootballerPrompt(game.currentFootballer)
+      footballer: getFootballerPromptForPlayer(game.currentFootballer, game, game.player2),
+      character: game.hpCharacters[game.player2],
+      opponentCharacter: game.hpCharacters[game.player1]
     });
   }
 
@@ -1714,18 +1902,65 @@ function selectRandomFootballer() {
   return FOOTBALLERS[index];
 }
 
-function getFootballerPrompt(footballer) {
-  return {
+function getFootballerPromptForPlayer(footballer, game, player) {
+  const opponent = game.player1 === player ? game.player2 : game.player1;
+  const oppChar = game.hpCharacters[opponent];
+
+  const prompt = {
     number: footballer.number,
     nationality: footballer.nationality,
     club: footballer.club,
     league: footballer.league
   };
+
+  if (oppChar === 'kluj') {
+    const details = ['number', 'nationality', 'club', 'league'];
+    const hideIndex = Math.floor(Math.random() * details.length);
+    const hideKey = details[hideIndex];
+    prompt[hideKey] = '???';
+  }
+
+  return prompt;
 }
 
 function triggerBotHotPotatoMove(gameId) {
   const game = activeGames[gameId];
   if (!game || game.status !== 'playing') return;
+
+  const botPlayer = game.activePlayer;
+
+  // If bot is in Gulag, delay its release
+  if (game.gulagState[botPlayer] && game.gulagState[botPlayer].active) {
+    setTimeout(() => {
+      const g = activeGames[gameId];
+      if (!g || g.status !== 'playing') return;
+      g.gulagState[botPlayer].active = false;
+      const s1 = onlineUsers[g.player1];
+      if (s1) {
+        io.to(s1).emit('stalin_gulag_bot_escaped');
+      }
+      triggerBotHotPotatoMove(gameId);
+    }, 7000); // Bot takes 7 seconds in gulag
+    return;
+  }
+
+  // Stalin bot skill trigger chance (25%)
+  if (game.hpCharacters[botPlayer] === 'stalin' && !game.hpSkillsUsed[botPlayer] && Math.random() < 0.25) {
+    game.hpSkillsUsed[botPlayer] = true;
+    const human = game.player1;
+    const s1 = onlineUsers[human];
+    if (s1) {
+      game.gulagState[human] = {
+        active: true,
+        solved: 0,
+        questions: getRandomGulagQuestions()
+      };
+      io.to(s1).emit('stalin_gulag_triggered', {
+        question: game.gulagState[human].questions[0].q,
+        options: game.gulagState[human].questions[0].options
+      });
+    }
+  }
 
   let minDelay = 2000, maxDelay = 4000;
   if (game.difficulty === 'easy') { minDelay = 6000; maxDelay = 9000; }
@@ -1751,11 +1986,10 @@ function triggerBotHotPotatoMove(gameId) {
         io.to(s1).emit('hot_potato_turn_update', {
           activePlayer: g.activePlayer,
           lastAnswerCorrect: true,
-          footballer: getFootballerPrompt(g.currentFootballer)
+          footballer: getFootballerPromptForPlayer(g.currentFootballer, g, g.player1)
         });
       }
     } else {
-      // Trigger a retry or delayed retry for the bot
       triggerBotHotPotatoMove(gameId);
     }
   }, delay);
