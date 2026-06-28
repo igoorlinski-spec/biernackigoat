@@ -2792,6 +2792,14 @@
             Rozwiązano zadań: <span id="hp-gulag-solved">0</span> / 3
           </div>
         </div>
+
+        <!-- Game over overlay for Hot Potato -->
+        <div class="round-result-overlay" id="hp-result-screen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; justify-content: center; align-items: center; flex-direction: column; background: rgba(1, 15, 25, 0.96); border-radius: 8px;">
+          <div class="result-title" id="hp-result-outcome">ZWYCIĘSTWO!</div>
+          <div class="result-stats-box" style="text-align: center;">
+            <p id="hp-result-reward" style="font-size: 1.2rem; color: #ffd700; font-weight: bold; margin-top: 10px;"></p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -4114,6 +4122,7 @@
       });
 
       socket.on('hot_potato_tick', ({ elapsed }) => {
+        playHotPotatoTickSound(elapsed);
         const bomb = document.getElementById('hp-bomb');
         if (bomb) {
           const scale = 1 + (elapsed * 0.012);
@@ -4322,8 +4331,24 @@
       });
 
       socket.on('game_over', ({ winner, reward, lpChange, newRank, newLp, prevRank, prevLp }) => {
+        const hpResScreen = document.getElementById('hp-result-screen');
+        const hpOutcome = document.getElementById('hp-result-outcome');
+        const hpReward = document.getElementById('hp-result-reward');
+
+        const activeView = document.querySelector('.view.active');
+        const isHotPotatoView = activeView && activeView.id === 'hot-potato-view';
+
+        if (isHotPotatoView && hpResScreen) {
+          const isWinner = winner === currentUser.nick;
+          hpOutcome.innerText = isWinner ? 'ZWYCIĘSTWO! 🏆' : 'PORAŻKA! 💥';
+          hpOutcome.className = `result-title ${isWinner ? 'victory' : 'defeat'}`;
+          hpReward.innerText = reward || '';
+          hpResScreen.style.display = 'flex';
+        }
+
         setTimeout(() => {
           document.getElementById('round-result-screen').style.display = 'none';
+          if (hpResScreen) hpResScreen.style.display = 'none';
 
           if (winner === currentUser.nick) playGameWinSound();
           else playGameLoseSound();
@@ -4681,6 +4706,11 @@
 
     function playCaseRollSound() {
       _playTone(1800, 'triangle', 0.015, 0.08);
+    }
+
+    function playHotPotatoTickSound(elapsed) {
+      const baseFreq = 500 + (elapsed * 5);
+      _playTone(baseFreq, 'sine', 0.04, 0.12);
     }
 
     function playRouletteTickingEffect() {

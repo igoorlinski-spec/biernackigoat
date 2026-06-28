@@ -1828,7 +1828,7 @@ function startHotPotatoGame(gameId) {
   if (!game) return;
 
   game.activePlayer = Math.random() < 0.5 ? game.player1 : game.player2;
-  game.totalTime = Math.floor(Math.random() * 81) + 10; // 10s to 90s
+  game.totalTime = Math.floor(Math.random() * 151) + 30; // 30s to 180s (3 min)
   game.timeLeft = game.totalTime;
   game.status = 'playing';
   game.currentFootballer = selectRandomFootballer();
