@@ -2091,6 +2091,13 @@
       margin-bottom: 30px;
     }
 
+    .leaderboard-table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 15px;
+    }
+
     .leaderboard-table {
       width: 100%;
       border-collapse: collapse;
@@ -2099,6 +2106,7 @@
     .leaderboard-table th, .leaderboard-table td {
       padding: 14px;
       text-align: left;
+      white-space: nowrap;
     }
 
     .leaderboard-table th {
@@ -3219,23 +3227,25 @@
     <div id="leaderboard-view" class="view">
       <div class="leaderboard-card">
         <h3>Tabela rankingowa</h3>
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>Miejsce</th>
-              <th>Gracz</th>
-              <th>Ranga</th>
-              <th>Punkty LP</th>
-              <th>Postać</th>
-              <th>Monety</th>
-              <th>Gwiazdy</th>
-              <th>Odznaki</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-body">
-            <!-- Dynamically generated leaderboard rows -->
-          </tbody>
-        </table>
+        <div class="leaderboard-table-wrapper">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Miejsce</th>
+                <th>Gracz</th>
+                <th>Ranga</th>
+                <th>Punkty LP</th>
+                <th>Postać</th>
+                <th>Monety</th>
+                <th>Gwiazdy</th>
+                <th>Odznaki</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <!-- Dynamically generated leaderboard rows -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -5762,18 +5772,18 @@
             if (!badgeHtml) badgeHtml = '<span style="color:#444">-</span>';
 
             const rankIconUrl = getRankIconPath(row.rank);
-            const rankHtml = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;"><img src="${rankIconUrl}" style="width: 20px; height: 20px; object-fit: contain;"><span>${row.rank}</span></div>`;
+            const rankHtml = `<div style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;"><img src="${rankIconUrl}" style="width: 20px; height: 20px; object-fit: contain; flex-shrink: 0;"><span>${row.rank}</span></div>`;
 
             tbody.innerHTML += `
               <tr>
-                <td class="rank-cell">#${index + 1}</td>
-                <td>${avatarHtml}${row.nick}</td>
-                <td>${rankHtml}</td>
-                <td class="lp-cell">${row.lp} LP</td>
-                <td style="color: var(--cyan-primary); font-weight: 600;">${row.active_champion || 'Zygzak'}</td>
-                <td><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
-                <td><i class="fa-solid fa-star" style="color: #ffd700;"></i> ${row.stars || 0}</td>
-                <td>${badgeHtml}</td>
+                <td class="rank-cell" style="white-space: nowrap;">#${index + 1}</td>
+                <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center;">${avatarHtml}<span>${row.nick}</span></div></td>
+                <td style="white-space: nowrap;">${rankHtml}</td>
+                <td class="lp-cell" style="white-space: nowrap;">${row.lp} LP</td>
+                <td style="color: var(--cyan-primary); font-weight: 600; white-space: nowrap;">${row.active_champion || 'Zygzak'}</td>
+                <td style="white-space: nowrap;"><i class="fa-solid fa-coins" style="color: #ffd700;"></i> ${row.coins}</td>
+                <td style="white-space: nowrap;"><i class="fa-solid fa-star" style="color: #ffd700;"></i> ${row.stars || 0}</td>
+                <td style="white-space: nowrap;"><div style="display: inline-flex; align-items: center; gap: 6px;">${badgeHtml}</div></td>
               </tr>
             `;
           });

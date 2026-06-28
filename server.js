@@ -371,13 +371,25 @@ app.get('/api/profile/:nick', async (req, res) => {
 app.get('/api/leaderboard', async (req, res) => {
   try {
     const result = await query(
-      'SELECT nick, lp, rank, coins, stars, active_champion, active_icon, casino_xp, blackjack_wins, perfect_timings FROM users WHERE length(nick) <= 10 ORDER BY lp DESC, coins DESC LIMIT 100'
+      'SELECT nick, lp, rank, coins, stars, active_champion, active_icon, casino_xp, blackjack_wins, perfect_timings FROM users WHERE length(nick) <= 10'
     );
-    res.json(result.rows);
+    const sorted = result.rows.sort((a, b) => {
+      const rankA = RANKS.indexOf(a.rank || 'Iron 4');
+      const rankB = RANKS.indexOf(b.rank || 'Iron 4');
+      if (rankB !== rankA) {
+        return rankB - rankA;
+      }
+      if (b.lp !== a.lp) {
+        return b.lp - a.lp;
+      }
+      return b.coins - a.coins;
+    });
+    res.json(sorted.slice(0, 100));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 app.post('/api/buy-icon', async (req, res) => {
   const { nick, iconName, cost } = req.body;
