@@ -4271,18 +4271,6 @@
           const p2Indicator = document.getElementById('hp-p2-skill-indicator');
           if (p2Indicator) p2Indicator.style.display = 'none';
         }
-      });,
-          wiewszystko: 'Autouzupełnienie (Wie Wszystko) 🧠',
-          stalin: 'Zsyłka do Łagru (Stalin) ☭'
-        };
-        const skillName = names[skill] || skill;
-        showToast(`Gracz ${nick} użył umiejętności: ${skillName}!`);
-        
-        const feedback = document.getElementById('hp-feedback');
-        if (feedback) {
-          feedback.innerText = `Gracz ${nick} użył ${skillName}!`;
-          feedback.style.color = '#ff9800';
-        }
       });
 
       socket.on('hot_potato_guess_result', ({ correct }) => {
