@@ -4507,6 +4507,14 @@
         return;
       }
 
+      hpSkillUsedThisGame = true;
+      const skillBtn = document.getElementById('hp-skill-btn');
+      if (skillBtn) {
+        skillBtn.disabled = true;
+        skillBtn.style.opacity = '0.4';
+        skillBtn.innerText = 'Zdolność specjalna: ZUŻYTA ❌';
+      }
+
       socket.emit('use_hp_skill', { gameId: currentGameId, skill: character });
     }
 
@@ -4981,8 +4989,15 @@
 
     // Listen to Spacebar for stopwatch & 'M' for skills & 'N' for extra skills
     window.addEventListener('keydown', (e) => {
-      // Avoid firing when typing in auth forms
-      if (document.activeElement.tagName === 'INPUT') return;
+      const activeView = document.querySelector('.view.active');
+      const isHP = activeView && activeView.id === 'hot-potato-view';
+
+      // Avoid firing when typing in input forms unless it's HP guess input and Ctrl/Alt is pressed
+      if (document.activeElement.tagName === 'INPUT') {
+        if (!isHP || document.activeElement.id !== 'hp-guess-input' || (!e.ctrlKey && !e.altKey)) {
+          return;
+        }
+      }
 
       if (e.code === 'Space') {
         e.preventDefault();
@@ -4996,7 +5011,11 @@
 
       if (e.key.toLowerCase() === 'm') {
         e.preventDefault();
-        useActiveSkill();
+        if (isHP) {
+          useHpActiveSkill();
+        } else {
+          useActiveSkill();
+        }
       }
 
       if (e.key.toLowerCase() === 'n') {
